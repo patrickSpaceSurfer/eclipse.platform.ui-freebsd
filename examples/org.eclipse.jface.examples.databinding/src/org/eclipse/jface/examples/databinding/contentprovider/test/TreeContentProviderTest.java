@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2018 IBM Corporation and others.
+ * Copyright (c) 2006, 2023 IBM Corporation and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -49,16 +49,16 @@ import org.eclipse.swt.widgets.Shell;
  */
 public class TreeContentProviderTest {
 
-	private Shell shell;
+	private final Shell shell;
 	private TreeViewer tree;
 
 	// Three randomly-generated sets of doubles
-	private AsynchronousTestSet set1;
-	private AsynchronousTestSet set2;
-	private AsynchronousTestSet set3;
+	private final AsynchronousTestSet set1;
+	private final AsynchronousTestSet set2;
+	private final AsynchronousTestSet set3;
 
 	// The union of the above three sets
-	private UnionSet<Object> union;
+	private final UnionSet<Object> union;
 	private Button randomize;
 
 	public TreeContentProviderTest() {
@@ -140,15 +140,11 @@ public class TreeContentProviderTest {
 		IViewerLabelProvider labelProvider = new ViewerLabelProvider() {
 			@Override
 			public void updateLabel(ViewerLabel label, Object element) {
-				if (element instanceof SimpleNode) {
-					SimpleNode node = (SimpleNode) element;
-
+				if (element instanceof SimpleNode node) {
 					label.setText(node.getNodeName());
 				}
 
-				if (element instanceof Integer) {
-					Integer node = (Integer) element;
-
+				if (element instanceof Integer node) {
 					label.setText("Integer " + node);
 				}
 			}

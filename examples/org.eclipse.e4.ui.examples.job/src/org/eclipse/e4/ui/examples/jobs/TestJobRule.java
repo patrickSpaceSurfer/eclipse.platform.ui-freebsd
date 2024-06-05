@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2014, 2018 Wojciech Sudol and others.
+ * Copyright (c) 2014, 2023 Wojciech Sudol and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -21,7 +21,7 @@ import org.eclipse.core.runtime.jobs.ISchedulingRule;
  *
  */
 public class TestJobRule implements ISchedulingRule {
-	private int jobOrder;
+	private final int jobOrder;
 
 	public TestJobRule(int order) {
 		jobOrder = order;
@@ -36,9 +36,9 @@ public class TestJobRule implements ISchedulingRule {
 
 	@Override
 	public boolean isConflicting(ISchedulingRule rule) {
-		if (!(rule instanceof TestJobRule))
-			return false;
-		return ((TestJobRule) rule).getJobOrder() >= jobOrder;
+		if (rule instanceof TestJobRule jobRule)
+			return jobRule.getJobOrder() >= jobOrder;
+		return false;
 	}
 
 	/**

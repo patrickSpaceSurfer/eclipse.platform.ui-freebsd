@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2020 IBM Corporation and others.
+ * Copyright (c) 2000, 2022 IBM Corporation and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -11,6 +11,8 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *     Christoph Läubrich - Bug 567898 - [JFace][HiDPI] ImageDescriptor support alternative naming scheme for high dpi
+ *     Daniel Kruegler - #375, #376, #378, #396, #398, #401,
+ *                       #679: Ensure that a fresh ImageFileNameProvider instance is created to preserve Image#equals invariant.
  *******************************************************************************/
 package org.eclipse.jface.resource;
 
@@ -25,8 +27,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.eclipse.core.runtime.FileLocator;
+import org.eclipse.core.runtime.IAdaptable;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.internal.InternalPolicy;
 import org.eclipse.jface.util.Policy;
@@ -40,31 +43,47 @@ import org.eclipse.swt.graphics.ImageFileNameProvider;
 /**
  * An image descriptor that loads its image information from a file.
  */
-class FileImageDescriptor extends ImageDescriptor {
-
-	private static final Pattern XPATH_PATTERN = Pattern.compile("(\\d+)x(\\d+)"); //$NON-NLS-1$
+class FileImageDescriptor extends ImageDescriptor implements IAdaptable {
 
 	private class ImageProvider implements ImageFileNameProvider {
+
 		@Override
 		public String getImagePath(int zoom) {
+			final boolean logIOException = zoom == 100;
+			if (zoom == 100) {
+				return getFilePath(name, logIOException);
+			}
 			String xName = getxName(name, zoom);
 			if (xName != null) {
-				return getFilePath(xName, zoom == 100);
+				String xResult = getFilePath(xName, logIOException);
+				if (xResult != null) {
+					return xResult;
+				}
 			}
-			return getFilePath(name, zoom == 100);
+			String xPath = getxPath(name, zoom);
+			if (xPath != null) {
+				String xResult = getFilePath(xPath, logIOException);
+				if (xResult != null) {
+					return xResult;
+				}
+			}
+			return null;
 		}
+
 	}
+
+	private static final Pattern XPATH_PATTERN = Pattern.compile("(\\d+)x(\\d+)"); //$NON-NLS-1$
 
 	/**
 	 * The class whose resource directory contain the file, or <code>null</code>
 	 * if none.
 	 */
-	private Class<?> location;
+	private final Class<?> location;
 
 	/**
 	 * The name of the file.
 	 */
-	private String name;
+	private final String name;
 
 	/**
 	 * Creates a new file image descriptor. The file has the given file name and
@@ -172,11 +191,13 @@ class FileImageDescriptor extends ImageDescriptor {
 		Matcher matcher = XPATH_PATTERN.matcher(name);
 		if (matcher.find()) {
 			try {
-				int current = Integer.parseInt(matcher.group(1));
-				int desired = (int) ((zoom / 100d) * current);
+				int currentWidth = Integer.parseInt(matcher.group(1));
+				int desiredWidth = Math.round((zoom / 100f) * currentWidth);
+				int currentHeight = Integer.parseInt(matcher.group(2));
+				int desiredHeight = Math.round((zoom / 100f) * currentHeight);
 				String lead = name.substring(0, matcher.start(1));
 				String tail = name.substring(matcher.end(2));
-				return lead + desired + "x" + desired + tail; //$NON-NLS-1$
+				return lead + desiredWidth + "x" + desiredHeight + tail; //$NON-NLS-1$
 			} catch (RuntimeException e) {
 				// should never happen but if then we can't use the alternative name...
 			}
@@ -221,6 +242,9 @@ class FileImageDescriptor extends ImageDescriptor {
 	public Image createImage(boolean returnMissingImageOnError, Device device) {
 		if (InternalPolicy.DEBUG_LOAD_URL_IMAGE_DESCRIPTOR_2x) {
 			try {
+				// We really want a fresh ImageFileNameProvider instance to make
+				// sure the code that uses created images can use equals(),
+				// see Image#equals
 				return new Image(device, new ImageProvider());
 			} catch (SWTException | IllegalArgumentException exception) {
 				// If we fail, fall back to the old 1x implementation.
@@ -262,9 +286,8 @@ class FileImageDescriptor extends ImageDescriptor {
 	 * @return {@link String} or <code>null</code> if the file cannot be found
 	 */
 	String getFilePath(String name, boolean logIOException) {
-
 		if (location == null)
-			return new Path(name).toOSString();
+			return IPath.fromOSString(name).toOSString();
 
 		URL resource = location.getResource(name);
 
@@ -272,10 +295,9 @@ class FileImageDescriptor extends ImageDescriptor {
 			return null;
 		try {
 			if (!InternalPolicy.OSGI_AVAILABLE) {// Stand-alone case
-
-				return new Path(resource.getFile()).toOSString();
+				return IPath.fromOSString(resource.getFile()).toOSString();
 			}
-			return new Path(FileLocator.toFileURL(resource).getPath()).toOSString();
+			return IPath.fromOSString(FileLocator.toFileURL(resource).getPath()).toOSString();
 		} catch (IOException e) {
 			if (logIOException) {
 				Policy.logException(e);
@@ -288,4 +310,18 @@ class FileImageDescriptor extends ImageDescriptor {
 			return null;
 		}
 	}
+
+	@Override
+	public <T> T getAdapter(Class<T> adapter) {
+		if (adapter == URL.class) {
+			if (location != null && name != null) {
+				return adapter.cast(location.getResource(name));
+			}
+		}
+		if (adapter == ImageFileNameProvider.class) {
+			return adapter.cast(new ImageProvider());
+		}
+		return null;
+	}
+
 }

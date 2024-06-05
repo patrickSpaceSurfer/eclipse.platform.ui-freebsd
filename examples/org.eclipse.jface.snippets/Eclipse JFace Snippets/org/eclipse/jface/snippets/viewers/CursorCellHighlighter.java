@@ -29,9 +29,9 @@ import org.eclipse.jface.viewers.ViewerCell;
  *
  */
 public class CursorCellHighlighter extends FocusCellHighlighter {
-	private ColumnViewer viewer;
+	private final ColumnViewer viewer;
 
-	private AbstractCellCursor cursor;
+	private final AbstractCellCursor cursor;
 
 	/**
 	 * @param viewer
@@ -45,11 +45,11 @@ public class CursorCellHighlighter extends FocusCellHighlighter {
 	}
 
 	@Override
-	protected void focusCellChanged(ViewerCell cell) {
-		super.focusCellChanged(cell);
-		if (cell != null && !viewer.isCellEditorActive()) {
+	protected void focusCellChanged(ViewerCell newCell, ViewerCell oldCell) {
+		super.focusCellChanged(newCell, oldCell);
+		if (newCell != null && !viewer.isCellEditorActive()) {
 			System.err.println("SHOW EDITOR"); //$NON-NLS-1$
-			cursor.setSelection(cell, 0); //TODO THE TIME
+			cursor.setSelection(newCell, 0); // TODO THE TIME
 			cursor.setVisible(true);
 		}
 	}

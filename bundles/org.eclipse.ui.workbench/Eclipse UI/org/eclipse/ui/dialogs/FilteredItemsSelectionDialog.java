@@ -956,8 +956,7 @@ public abstract class FilteredItemsSelectionDialog extends SelectionStatusDialog
 	 * Schedules progress message refresh.
 	 */
 	public void scheduleProgressMessageRefresh() {
-		if (filterJob.getState() != Job.RUNNING && refreshProgressMessageJob.getState() != Job.RUNNING)
-			refreshProgressMessageJob.scheduleProgressRefresh(null);
+		refreshProgressMessageJob.scheduleProgressRefresh(null);
 	}
 
 	@Override
@@ -1320,7 +1319,7 @@ public abstract class FilteredItemsSelectionDialog extends SelectionStatusDialog
 	 */
 	private class RefreshProgressMessageJob extends UIJob {
 
-		private GranualProgressMonitor progressMonitor;
+		private volatile GranualProgressMonitor progressMonitor;
 
 		/**
 		 * Creates a new instance of the class.
@@ -1334,8 +1333,11 @@ public abstract class FilteredItemsSelectionDialog extends SelectionStatusDialog
 		@Override
 		public IStatus runInUIThread(IProgressMonitor monitor) {
 
-			if (!progressLabel.isDisposed())
+			if (!progressLabel.isDisposed()) {
 				progressLabel.setText(progressMonitor != null ? progressMonitor.getMessage() : EMPTY_STRING);
+			} else {
+				return Status.CANCEL_STATUS;
+			}
 
 			if (progressMonitor == null || progressMonitor.isDone()) {
 				return new Status(IStatus.CANCEL, PlatformUI.PLUGIN_ID, IStatus.CANCEL, EMPTY_STRING, null);

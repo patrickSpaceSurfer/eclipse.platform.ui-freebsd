@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -32,6 +31,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.eclipse.core.internal.runtime.XmlProcessorFactory;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtension;
 import org.eclipse.core.runtime.IExtensionPoint;
@@ -61,6 +61,7 @@ import org.xml.sax.SAXException;
  * be accessed
  *
  */
+@SuppressWarnings("restriction")
 public class PluginWalkerTest {
 
 	private BundleContext bundleContext;
@@ -68,11 +69,11 @@ public class PluginWalkerTest {
 
 	@Before
 	public void setup() throws Exception {
-		Bundle bundle = FrameworkUtil.getBundle(PluginWalkerTest.this.getClass());
+		Bundle bundle = FrameworkUtil.getBundle(PluginWalkerTest.class);
 		assertNotNull("Make sure you're running this as a plugin test", bundle);
 		assertNotNull(bundle);
 		bundleContext = bundle.getBundleContext();
-		bundlesWithPluginXml = Arrays.asList("org.eclipse.e4.ui.css.swt", "org.eclipse.e4.ui.model.workbench",
+		bundlesWithPluginXml = List.of("org.eclipse.e4.ui.css.swt", "org.eclipse.e4.ui.model.workbench",
 				"org.eclipse.e4.ui.workbench.swt", "org.eclipse.ui.forms", "org.eclipse.ui.themes",
 				"org.eclipse.e4.ui.workbench", "org.eclipse.e4.ui.workbench.addons.swt", "org.eclipse.ui.ide",
 				"org.eclipse.e4.ui.css.core", "org.eclipse.ui.workbench", "org.eclipse.ui.navigator.resources",
@@ -188,7 +189,7 @@ public class PluginWalkerTest {
 	}
 
 	private static DocumentBuilder createDocumentBuilder() throws ParserConfigurationException {
-		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		DocumentBuilderFactory factory = XmlProcessorFactory.createDocumentBuilderFactoryWithErrorOnDOCTYPE();
 		factory.setNamespaceAware(true);
 		return factory.newDocumentBuilder();
 	}

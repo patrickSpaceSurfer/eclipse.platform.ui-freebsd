@@ -19,7 +19,6 @@ import org.eclipse.e4.ui.model.application.commands.MBindings;
 import org.eclipse.e4.ui.model.application.commands.MHandlerContainer;
 import org.eclipse.e4.ui.model.application.ui.MContext;
 import org.eclipse.e4.ui.model.application.ui.MDirtyable;
-import org.eclipse.e4.ui.model.application.ui.MUIElement;
 import org.eclipse.e4.ui.model.application.ui.MUILabel;
 import org.eclipse.e4.ui.model.application.ui.menu.MMenu;
 import org.eclipse.e4.ui.model.application.ui.menu.MToolBar;
@@ -53,7 +52,7 @@ import org.eclipse.e4.ui.model.application.ui.menu.MToolBar;
  * @model
  * @generated
  */
-public interface MPart extends MUIElement, MPartSashContainerElement, MStackElement, MContribution, MContext, MUILabel,
+public interface MPart extends MPartSashContainerElement, MStackElement, MContribution, MContext, MUILabel,
 		MHandlerContainer, MDirtyable, MBindings, MWindowElement {
 	/**
 	 * Returns the value of the '<em><b>Menus</b></em>' containment reference list.
@@ -179,8 +178,8 @@ public interface MPart extends MUIElement, MPartSashContainerElement, MStackElem
 	 * <!-- begin-model-doc -->
 	 * <p>
 	 * The collection of TrimBars associated with this part.
-	 * @since 1.3
 	 * </p>
+	 * @since 1.3
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Trim Bars</em>' containment reference list.
 	 * @model containment="true"

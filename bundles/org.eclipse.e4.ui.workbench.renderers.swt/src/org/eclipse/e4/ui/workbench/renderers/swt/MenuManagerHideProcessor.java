@@ -16,12 +16,12 @@
  *******************************************************************************/
 package org.eclipse.e4.ui.workbench.renderers.swt;
 
+import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import javax.inject.Inject;
 import org.eclipse.e4.core.contexts.ContextInjectionFactory;
 import org.eclipse.e4.core.contexts.EclipseContextFactory;
 import org.eclipse.e4.core.contexts.IEclipseContext;
@@ -98,7 +98,7 @@ public class MenuManagerHideProcessor implements IMenuListener2 {
 				for (Entry<MDynamicMenuContribution, ArrayList<MMenuElement>> entry : toBeHidden.entrySet()) {
 					MDynamicMenuContribution currentMenuElement = entry.getKey();
 					Object contribution = currentMenuElement.getObject();
-					if (contribution != null) {
+					if (contribution == null) {
 						continue; // avoid NPE (Bug 578964)
 					}
 					IEclipseContext dynamicMenuContext = EclipseContextFactory.create();

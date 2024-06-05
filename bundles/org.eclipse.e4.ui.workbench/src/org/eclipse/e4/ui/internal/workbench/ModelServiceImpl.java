@@ -18,6 +18,8 @@
 
 package org.eclipse.e4.ui.internal.workbench;
 
+import jakarta.annotation.PreDestroy;
+import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Dictionary;
@@ -25,8 +27,6 @@ import java.util.Hashtable;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
-import javax.annotation.PreDestroy;
-import javax.inject.Inject;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.IExtensionRegistry;
 import org.eclipse.e4.core.contexts.ContextInjectionFactory;
@@ -57,6 +57,7 @@ import org.eclipse.e4.ui.model.application.ui.basic.MPartSashContainer;
 import org.eclipse.e4.ui.model.application.ui.basic.MPartSashContainerElement;
 import org.eclipse.e4.ui.model.application.ui.basic.MPartStack;
 import org.eclipse.e4.ui.model.application.ui.basic.MTrimBar;
+import org.eclipse.e4.ui.model.application.ui.basic.MTrimElement;
 import org.eclipse.e4.ui.model.application.ui.basic.MTrimmedWindow;
 import org.eclipse.e4.ui.model.application.ui.basic.MWindow;
 import org.eclipse.e4.ui.model.application.ui.basic.MWindowElement;
@@ -955,7 +956,7 @@ public class ModelServiceImpl implements EModelService {
 		List<MTrimBar> bars = findElements(window, null, MTrimBar.class, null);
 		List<MToolControl> toRemove = new ArrayList<>();
 		for (MTrimBar bar : bars) {
-			for (MUIElement barKid : bar.getChildren()) {
+			for (MTrimElement barKid : bar.getChildren()) {
 				if (!(barKid instanceof MToolControl)) {
 					continue;
 				}

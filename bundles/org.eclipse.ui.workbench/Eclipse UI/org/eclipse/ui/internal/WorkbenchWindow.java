@@ -23,6 +23,9 @@
 
 package org.eclipse.ui.internal;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import jakarta.inject.Inject;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,9 +39,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import javax.inject.Inject;
 import org.eclipse.core.commands.IHandler;
 import org.eclipse.core.expressions.Expression;
 import org.eclipse.core.expressions.ExpressionInfo;
@@ -47,6 +47,7 @@ import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtensionRegistry;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.ListenerList;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
@@ -63,6 +64,7 @@ import org.eclipse.e4.core.services.log.Logger;
 import org.eclipse.e4.ui.di.UIEventTopic;
 import org.eclipse.e4.ui.internal.workbench.E4Workbench;
 import org.eclipse.e4.ui.internal.workbench.PartServiceSaveHandler;
+import org.eclipse.e4.ui.internal.workbench.UIExtensionTracker;
 import org.eclipse.e4.ui.internal.workbench.URIHelper;
 import org.eclipse.e4.ui.internal.workbench.renderers.swt.IUpdateService;
 import org.eclipse.e4.ui.model.application.MApplication;
@@ -186,7 +188,6 @@ import org.eclipse.ui.internal.progress.ProgressRegion;
 import org.eclipse.ui.internal.provisional.application.IActionBarConfigurer2;
 import org.eclipse.ui.internal.registry.IActionSetDescriptor;
 import org.eclipse.ui.internal.registry.IWorkbenchRegistryConstants;
-import org.eclipse.ui.internal.registry.UIExtensionTracker;
 import org.eclipse.ui.internal.services.EvaluationReference;
 import org.eclipse.ui.internal.services.IServiceLocatorCreator;
 import org.eclipse.ui.internal.services.IWorkbenchLocationService;
@@ -494,7 +495,8 @@ public class WorkbenchWindow implements IWorkbenchWindow {
 				@Override
 				public Object compute(IEclipseContext context, String contextKey) {
 					if (tracker == null) {
-						tracker = new UIExtensionTracker(getWorkbench().getDisplay());
+						tracker = new UIExtensionTracker(getWorkbench().getDisplay()::asyncExec,
+								WorkbenchPlugin.getDefault().getLog());
 					}
 					return tracker;
 				}
@@ -2341,14 +2343,15 @@ public class WorkbenchWindow implements IWorkbenchWindow {
 				final InterruptedException[] ie = new InterruptedException[1];
 
 				BusyIndicator.showWhile(getShell().getDisplay(), () -> {
+					IProgressMonitor progressMonitor = manager.getProgressMonitor();
 					try {
-						ModalContext.run(runnable, fork, manager.getProgressMonitor(), getShell().getDisplay());
+						ModalContext.run(runnable, fork, progressMonitor, getShell().getDisplay());
 					} catch (InvocationTargetException e1) {
 						ite[0] = e1;
 					} catch (InterruptedException e2) {
 						ie[0] = e2;
 					} finally {
-						manager.getProgressMonitor().done();
+						progressMonitor.done();
 					}
 				});
 

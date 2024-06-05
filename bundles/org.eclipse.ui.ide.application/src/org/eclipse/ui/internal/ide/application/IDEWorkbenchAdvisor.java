@@ -41,7 +41,6 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.MultiStatus;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.ProgressMonitorWrapper;
 import org.eclipse.core.runtime.Status;
@@ -323,7 +322,7 @@ public class IDEWorkbenchAdvisor extends WorkbenchAdvisor {
 
 				// make sure they really want to do this
 				if (new MessageDialog(null, IDEWorkbenchMessages.SystemSettingsChange_title, null,
-						IDEWorkbenchMessages.SystemSettingsChange_message, MessageDialog.QUESTION, 1,
+						IDEWorkbenchMessages.SystemSettingsChange_message, MessageDialog.NONE, 1,
 						IDEWorkbenchMessages.SystemSettingsChange_yes, IDEWorkbenchMessages.SystemSettingsChange_no)
 								.open() == Window.OK) {
 					PlatformUI.getWorkbench().restart();
@@ -911,7 +910,7 @@ public class IDEWorkbenchAdvisor extends WorkbenchAdvisor {
 	 */
 	protected void declareWorkbenchImage(Bundle ideBundle, String symbolicName,
 			String path, boolean shared) {
-		URL url = FileLocator.find(ideBundle, new Path(path), null);
+		URL url = FileLocator.find(ideBundle, IPath.fromOSString(path), null);
 		ImageDescriptor desc = ImageDescriptor.createFromURL(url);
 		getWorkbenchConfigurer().declareImage(symbolicName, desc, shared);
 	}

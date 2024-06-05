@@ -36,9 +36,6 @@ public class CSS2FontPropertiesHelpers {
 
 	/**
 	 * Get {@link CSS2FontProperties} from {@link CSSElementContext} context.
-	 *
-	 * @param control
-	 * @return
 	 */
 	public static CSS2FontProperties getCSS2FontProperties(CSSElementContext context) {
 		// Search into Data of context if CSS2FontProperties exist.
@@ -130,7 +127,6 @@ public class CSS2FontPropertiesHelpers {
 	 *
 	 * @param font
 	 * @param value
-	 * @throws Exception
 	 */
 	public static void updateCSSPropertyFontFamily(CSS2FontProperties font, CSSValue value) {
 		if (value.getCssValueType() == CSSValue.CSS_PRIMITIVE_VALUE) {
@@ -143,7 +139,6 @@ public class CSS2FontPropertiesHelpers {
 	 *
 	 * @param font
 	 * @param value
-	 * @throws Exception
 	 */
 	public static void updateCSSPropertyFontSize(CSS2FontProperties font, CSSValue value) {
 		if (value.getCssValueType() == CSSValue.CSS_PRIMITIVE_VALUE) {
@@ -156,7 +151,6 @@ public class CSS2FontPropertiesHelpers {
 	 *
 	 * @param font
 	 * @param value
-	 * @throws Exception
 	 */
 	public static void updateCSSPropertyFontStyle(CSS2FontProperties font, CSSValue value) {
 		if (value.getCssValueType() == CSSValue.CSS_PRIMITIVE_VALUE) {
@@ -169,7 +163,6 @@ public class CSS2FontPropertiesHelpers {
 	 *
 	 * @param font
 	 * @param value
-	 * @throws Exception
 	 */
 	public static void updateCSSPropertyFontWeight(CSS2FontProperties font, CSSValue value) {
 		if (value.getCssValueType() == CSSValue.CSS_PRIMITIVE_VALUE) {

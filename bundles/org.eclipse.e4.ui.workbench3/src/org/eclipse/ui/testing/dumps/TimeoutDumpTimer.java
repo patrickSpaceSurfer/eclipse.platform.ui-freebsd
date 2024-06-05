@@ -91,7 +91,6 @@ public class TimeoutDumpTimer extends TimerTask {
 	 *
 	 * @param timeoutArg      the value of the -timeout argument from the command
 	 *                        line
-	 * @param outputDirectory where screenshots end up
 	 */
 	public static void startTimeoutDumpTimer(String timeoutArg) {
 		startTimeoutDumpTimer(timeoutArg, null);
@@ -352,7 +351,7 @@ public class TimeoutDumpTimer extends TimerTask {
 	}
 
 	private static void log(IStatus warningStatus) {
-		ILog log = Platform.getLog(Platform.getBundle(PLUGIN_ID));
+		ILog log = ILog.of(Platform.getBundle(PLUGIN_ID));
 		log.log(warningStatus);
 	}
 

@@ -33,14 +33,13 @@ import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.core.runtime.Path;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.FrameworkUtil;
 
 public class ProjectUnzipUtil {
 
-	private IPath zipLocation;
-	private String[] projectNames;
+	private final IPath zipLocation;
+	private final String[] projectNames;
 	private IPath rootLocation = ResourcesPlugin.getWorkspace().getRoot().getLocation();
 	private static final String META_PROJECT_NAME = ".project"; //$NON-NLS-1$
 
@@ -58,7 +57,7 @@ public class ProjectUnzipUtil {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		return new Path(url.getPath());
+		return IPath.fromOSString(url.getPath());
 	}
 
 	public boolean createProjects() {
@@ -145,7 +144,7 @@ public class ProjectUnzipUtil {
 	private void buildProjects() throws IOException, CoreException {
 		for (String projectName : projectNames) {
 			IWorkspace workspace = ResourcesPlugin.getWorkspace();
-			IPath projectPath = new Path("/" + projectName + "/" + META_PROJECT_NAME); //$NON-NLS-1$//$NON-NLS-2$
+			IPath projectPath = IPath.fromOSString("/" + projectName + "/" + META_PROJECT_NAME); //$NON-NLS-1$//$NON-NLS-2$
 			IPath path = rootLocation.append(projectPath);
 			IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
 			IProjectDescription description = workspace.loadProjectDescription(path);

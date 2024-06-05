@@ -14,10 +14,16 @@
  *******************************************************************************/
 package org.eclipse.ui;
 
+import java.util.Optional;
+import java.util.function.Supplier;
 import org.eclipse.core.runtime.preferences.InstanceScope;
+import org.eclipse.e4.core.contexts.IEclipseContext;
 import org.eclipse.e4.ui.internal.workbench.swt.DialogSettingsProviderService;
+import org.eclipse.e4.ui.model.application.MApplication;
+import org.eclipse.e4.ui.services.help.EHelpService;
 import org.eclipse.jface.dialogs.IDialogSettingsProvider;
 import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.application.WorkbenchAdvisor;
 import org.eclipse.ui.internal.Workbench;
@@ -27,7 +33,9 @@ import org.eclipse.ui.internal.util.PrefUtil;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
 import org.eclipse.ui.testing.TestableObject;
 import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.ServiceReference;
 
 /**
  * The central class for access to the Eclipse Platform User Interface. This
@@ -83,6 +91,15 @@ public final class PlatformUI {
 	 * @since 3.0
 	 */
 	public static final int RETURN_EMERGENCY_CLOSE = 3;
+
+	/**
+	 * A supplier that supplies an {@link IllegalStateException} that a Workbench is
+	 * not running.
+	 *
+	 * @since 3.126
+	 */
+	public static final Supplier<RuntimeException> NO_WORKBENCH = () -> new IllegalStateException(
+			WorkbenchMessages.PlatformUI_NoWorkbench);
 
 	/**
 	 * Block instantiation.
@@ -232,5 +249,86 @@ public final class PlatformUI {
 	 */
 	public static IPreferenceStore createPreferenceStore(Class<?> clazz) {
 		return new ScopedPreferenceStore(InstanceScope.INSTANCE, FrameworkUtil.getBundle(clazz).getSymbolicName());
+	}
+
+	/**
+	 * This methods allows code of eclipse.ui to gracefully migrate to E4 as it has
+	 * the following properties:
+	 *
+	 * <ol>
+	 * <li>It does not throw an exception but returns an empty optional if something
+	 * is not ready (yet or anymore) so code can choose how to handle this (e.g. use
+	 * {@link Optional#orElseThrow()} if required or {@link Optional#orElse(Object)}
+	 * if a fallback exits.</li>
+	 * <li>If this is is actually a (ui) Workbench running, this is returned and
+	 * could be used</li>
+	 * <li>If not the service registry is searched for an
+	 * org.eclipse.e4.ui.workbench.IWorkbench so code can run inside a pure E4 (e.g.
+	 * RCP) application as well.</li>
+	 * <li>With the Application at hand, it is possible to get access to the
+	 * {@link IEclipseContext} (see {@link MApplication#getContext()} to further
+	 * interact with the plain E4 Application Model.</li>
+	 * </ol>
+	 *
+	 * The following example fails if run inside an E4 Application:
+	 * <p>
+	 * {@code PlatformUI.getWorkbench().getExtensionTracker()}
+	 * </p>
+	 * and could be rewritten as:
+	 * <p>
+	 * {@code PlatformUI.getApplication().map(MApplication::getContext).map(ctx -> ctx.get(IExtensionTracker.class)).orElseThrow(PlatformUI.NO_WORKBENCH); }
+	 * </p>
+	 *
+	 * @return a reference to the {@link MApplication} running the Workbench or an
+	 *         empty optional if currently no Workbench is available.
+	 * @since 3.126
+	 */
+	public static Optional<MApplication> getApplication() {
+		Workbench instance = Workbench.getInstance();
+		if (instance != null && instance.isRunning()) {
+			return Optional.of((instance.getApplication()));
+		}
+		WorkbenchPlugin plugin = WorkbenchPlugin.getDefault();
+		if (plugin == null) {
+			return Optional.empty();
+		}
+		// We intentionally do not use a tracker here to not bind it to much to the
+		// service in case E4 is used
+		BundleContext bundleContext = plugin.getBundleContext();
+		if (bundleContext == null) {
+			return Optional.empty();
+		}
+		ServiceReference<org.eclipse.e4.ui.workbench.IWorkbench> reference = bundleContext
+				.getServiceReference(org.eclipse.e4.ui.workbench.IWorkbench.class);
+		if (reference == null) {
+			return Optional.empty();
+		}
+		org.eclipse.e4.ui.workbench.IWorkbench service = bundleContext.getService(reference);
+		if (service == null) {
+			return Optional.empty();
+		}
+		bundleContext.ungetService(reference);
+		return Optional.ofNullable(service.getApplication());
+	}
+
+	/**
+	 * Sets the given help id on the given control in a way that works both for
+	 * E3/E4 applications
+	 *
+	 * @param control       the control on which to register the id
+	 * @param helpContextId the id to use when F1 help is invoked
+	 * @since 3.131
+	 */
+	public static void setHelp(Composite control, String helpContextId) {
+		if (control == null || helpContextId == null) {
+			return;
+		}
+		Workbench workbench = Workbench.getInstance();
+		if (workbench == null) {
+			getApplication().map(MApplication::getContext).map(ctx -> ctx.get(EHelpService.class))
+					.ifPresent(helpService -> helpService.setHelp(control, helpContextId));
+		} else {
+			PlatformUI.getWorkbench().getHelpSystem().setHelp(control, helpContextId);
+		}
 	}
 }

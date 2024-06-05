@@ -84,6 +84,15 @@ public class WorkbenchThemeManager extends EventManager implements IThemeManager
 		return instance;
 	}
 
+	/**
+	 * Disposes instance if it was created
+	 */
+	public static synchronized void disposeManager() {
+		if (instance != null) {
+			instance.dispose();
+		}
+	}
+
 	private ITheme currentTheme;
 
 	private IPropertyChangeListener currentThemeListener = event -> {
@@ -130,8 +139,7 @@ public class WorkbenchThemeManager extends EventManager implements IThemeManager
 
 		// copy the font values from preferences.
 		FontRegistry jfaceFonts = JFaceResources.getFontRegistry();
-		for (Object fontRegistryKey : jfaceFonts.getKeySet()) {
-			String key = (String) fontRegistryKey;
+		for (String key : jfaceFonts.getKeySet()) {
 			defaultThemeFontRegistry.put(key, jfaceFonts.getFontData(key));
 		}
 
@@ -343,14 +351,12 @@ public class WorkbenchThemeManager extends EventManager implements IThemeManager
 			// update the jface registries
 			ColorRegistry jfaceColors = JFaceResources.getColorRegistry();
 			ColorRegistry themeColors = currentTheme.getColorRegistry();
-			for (Object themeColorKey : themeColors.getKeySet()) {
-				String key = (String) themeColorKey;
+			for (String key : themeColors.getKeySet()) {
 				jfaceColors.put(key, themeColors.getRGB(key));
 			}
 			FontRegistry jfaceFonts = JFaceResources.getFontRegistry();
 			FontRegistry themeFonts = currentTheme.getFontRegistry();
-			for (Object themeFontKey : themeFonts.getKeySet()) {
-				String key = (String) themeFontKey;
+			for (String key : themeFonts.getKeySet()) {
 				jfaceFonts.put(key, themeFonts.getFontData(key));
 			}
 			if (oldTheme != null && eventBroker != null) {

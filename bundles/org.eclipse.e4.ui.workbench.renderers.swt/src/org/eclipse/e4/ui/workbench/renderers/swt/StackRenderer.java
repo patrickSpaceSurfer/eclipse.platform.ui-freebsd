@@ -20,16 +20,18 @@ package org.eclipse.e4.ui.workbench.renderers.swt;
 
 import static java.util.Collections.singletonList;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.Consumer;
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import javax.inject.Inject;
-import javax.inject.Named;
+import java.util.function.Predicate;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.e4.core.contexts.IEclipseContext;
 import org.eclipse.e4.core.di.annotations.Optional;
@@ -47,6 +49,7 @@ import org.eclipse.e4.ui.model.application.ui.MDirtyable;
 import org.eclipse.e4.ui.model.application.ui.MElementContainer;
 import org.eclipse.e4.ui.model.application.ui.MUIElement;
 import org.eclipse.e4.ui.model.application.ui.MUILabel;
+import org.eclipse.e4.ui.model.application.ui.advanced.MPerspective;
 import org.eclipse.e4.ui.model.application.ui.advanced.MPlaceholder;
 import org.eclipse.e4.ui.model.application.ui.basic.MCompositePart;
 import org.eclipse.e4.ui.model.application.ui.basic.MPart;
@@ -67,30 +70,39 @@ import org.eclipse.e4.ui.workbench.modeling.ISaveHandler;
 import org.eclipse.jface.action.IContributionItem;
 import org.eclipse.jface.action.LegacyActionTools;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.layout.GridDataFactory;
+import org.eclipse.jface.layout.GridLayoutFactory;
+import org.eclipse.jface.preference.JFacePreferences;
 import org.eclipse.jface.resource.JFaceResources;
+import org.eclipse.jface.widgets.WidgetFactory;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.accessibility.ACC;
 import org.eclipse.swt.accessibility.Accessible;
 import org.eclipse.swt.accessibility.AccessibleListener;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabFolder2Adapter;
+import org.eclipse.swt.custom.CTabFolder2Listener;
 import org.eclipse.swt.custom.CTabFolderEvent;
 import org.eclipse.swt.custom.CTabItem;
+import org.eclipse.swt.events.ControlEvent;
 import org.eclipse.swt.events.ControlListener;
 import org.eclipse.swt.events.MouseAdapter;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.MouseListener;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.RowData;
 import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Monitor;
@@ -161,6 +173,23 @@ public class StackRenderer extends LazyStackRenderer {
 	// Minimum characters in for stacks inside the shared area
 	private static int MIN_EDITOR_CHARS = 15;
 
+	/**
+	 * Top spacing for onboarding composite, needed so that tabfolder borders are
+	 * shown
+	 */
+	public static final int ONBOARDING_TOP_SPACING = 30;
+	/**
+	 * (Left, Right, Bottom) Spacing for onboarding composite, needed so that
+	 * tabfolder borders are shown
+	 */
+	public static final int ONBOARDING_SPACING = 2;
+
+	/**
+	 * The threshold to show the onbarding image. If tabfolder height gets below
+	 * this threshold, the image is hidden.
+	 */
+	public static final int ONBOARDING_SHOW_IMAGE_HEIGHT_THRESHOLD = 450;
+
 	private Image viewMenuImage;
 	private String viewMenuURI = "platform:/plugin/org.eclipse.e4.ui.workbench.renderers.swt/icons/full/elcl16/view_menu.png"; //$NON-NLS-1$
 
@@ -175,6 +204,10 @@ public class StackRenderer extends LazyStackRenderer {
 	private TabStateHandler tabStateHandler;
 
 	private boolean imageChanged;
+
+	private Composite onboardingComposite;
+	private Label onboardingText;
+	private Label onboardingImage;
 
 	List<CTabItem> getItemsToSet(MPart part) {
 		List<CTabItem> itemsToSet = new ArrayList<>();
@@ -206,6 +239,56 @@ public class StackRenderer extends LazyStackRenderer {
 		CTabItem item = findItemForPart(parentParent);
 		if (item != null) {
 			itemsToSet.add(item);
+		}
+	}
+
+	@Inject
+	@Optional
+	void subscribePerspectiveSwitched(
+			@UIEventTopic(UIEvents.UILifeCycle.PERSPECTIVE_SWITCHED) org.osgi.service.event.Event event) {
+		Object element = event.getProperty(EventTags.ELEMENT);
+		if (element instanceof MPerspective) {
+			setOnboarding((MPerspective) element);
+		}
+	}
+
+	private void setOnboarding(MPerspective perspective) {
+		if (onboardingImage == null || onboardingText == null || onboardingComposite == null
+				|| onboardingComposite.isDisposed()) {
+			return;
+		}
+
+		Arrays.stream(onboardingComposite.getChildren()).filter(c -> c != onboardingImage)
+				.filter(c -> c != onboardingText).forEach(Control::dispose);
+
+		String textId = "persp.editorOnboardingText:"; //$NON-NLS-1$
+		perspective.getTags().stream().filter(tag -> tag.startsWith(textId)).map(tag -> tag.substring(textId.length()))
+				.findFirst().ifPresentOrElse(onboardingText::setText, () -> onboardingText.setText("")); //$NON-NLS-1$
+
+		String iconId = "persp.editorOnboardingImageUri:"; //$NON-NLS-1$
+		perspective.getTags().stream().filter(tag -> tag.startsWith(iconId)).map(tag -> tag.substring(iconId.length()))
+				.findFirst().map(this::getImageFromURI).filter(Predicate.not(Image::isDisposed))
+				.ifPresentOrElse(onboardingImage::setImage, () -> onboardingImage.setImage(null));
+
+		String commandId = "persp.editorOnboardingCommand:"; //$NON-NLS-1$
+		String[] commands = perspective.getTags().stream().filter(tag -> tag.startsWith(commandId))
+				.map(tag -> tag.substring(commandId.length())).toArray(String[]::new);
+
+		Color color = JFaceResources.getColorRegistry().get(JFacePreferences.QUALIFIER_COLOR);
+
+		GridDataFactory labelGridDataFactory = GridDataFactory.swtDefaults().align(SWT.RIGHT, SWT.CENTER);
+		GridDataFactory commandGridDataFactory = GridDataFactory.swtDefaults().align(SWT.LEFT, SWT.CENTER);
+
+		for (int i = 0; i < commands.length; i++) {
+			labelGridDataFactory.indent(SWT.DEFAULT, i == 0 ? 10 : SWT.DEFAULT);
+			commandGridDataFactory.indent(SWT.DEFAULT, i == 0 ? 10 : SWT.DEFAULT);
+
+			String[] commandAndText = commands[i].split("\\$\\$\\$"); //$NON-NLS-1$
+
+			WidgetFactory.label(SWT.NONE).text(commandAndText[0]).foreground(color)
+					.supplyLayoutData(labelGridDataFactory::create).create(onboardingComposite);
+			WidgetFactory.label(SWT.NONE).text(commandAndText[1]).foreground(color)
+					.supplyLayoutData(commandGridDataFactory::create).create(onboardingComposite);
 		}
 	}
 
@@ -602,7 +685,10 @@ public class StackRenderer extends LazyStackRenderer {
 
 		int styleOverride = getStyleOverride(pStack);
 		int style = styleOverride == -1 ? SWT.BORDER : styleOverride;
-		final CTabFolder tabFolder = new CTabFolder(parentComposite, style);
+		CTabFolder tabFolder = new CTabFolder(parentComposite, style);
+		if (pStack.getTags().contains("EditorStack")) { //$NON-NLS-1$
+			createOnboardingControls(tabFolder);
+		}
 		tabFolder.setMRUVisible(getMRUValue());
 
 		// Adjust the minimum chars based on the location
@@ -621,6 +707,77 @@ public class StackRenderer extends LazyStackRenderer {
 		addTopRight(tabFolder);
 
 		return tabFolder;
+	}
+
+	private void createOnboardingControls(CTabFolder tabFolder) {
+		Composite onBoarding = WidgetFactory.composite(SWT.NONE).layout(GridLayoutFactory.swtDefaults().create())
+				.background(tabFolder.getBackground()).create(tabFolder);
+
+		onboardingComposite = WidgetFactory.composite(SWT.NONE).background(tabFolder.getBackground())
+				.create(onBoarding);
+		GridDataFactory.create(GridData.VERTICAL_ALIGN_CENTER | GridData.HORIZONTAL_ALIGN_CENTER).grab(true, true)
+				.applyTo(onboardingComposite);
+
+		GridLayoutFactory.swtDefaults().numColumns(2).equalWidth(true).spacing(10, SWT.DEFAULT)
+				.applyTo(onboardingComposite);
+
+		GridDataFactory gridDataFactory = GridDataFactory.swtDefaults().align(SWT.CENTER, SWT.CENTER)
+				.indent(SWT.DEFAULT, 10).span(2, 1);
+
+		onboardingImage = WidgetFactory.label(SWT.NONE).supplyLayoutData(gridDataFactory::create)
+				.create(onboardingComposite);
+
+		Color color = JFaceResources.getColorRegistry().get(JFacePreferences.QUALIFIER_COLOR);
+		onboardingText = WidgetFactory.label(SWT.NONE).foreground(color).supplyLayoutData(gridDataFactory::create)
+				.create(onboardingComposite);
+
+		onBoarding.setLocation(ONBOARDING_SPACING, ONBOARDING_TOP_SPACING);
+		Consumer<ControlEvent> sizeUpdate = e -> setOnboardingControlSize(tabFolder, onBoarding, onboardingImage);
+		tabFolder.addControlListener(ControlListener.controlResizedAdapter(sizeUpdate));
+		Consumer<CTabFolderEvent> tabCountUpdate = e -> setOnboardingControlSize(tabFolder, onBoarding,
+				onboardingImage);
+		tabFolder.addCTabFolder2Listener(CTabFolder2Listener.itemsCountAdapter(tabCountUpdate));
+
+		tabFolder.addDisposeListener(e -> {
+			if (onboardingImage != null && !onboardingImage.isDisposed() && onboardingImage.getImage() != null
+					&& !onboardingImage.getImage().isDisposed()) {
+				onboardingImage.dispose();
+			}
+		});
+	}
+
+	private void setOnboardingControlSize(CTabFolder tabFolder, Composite onBoarding, Label onBoardingImage) {
+		if (onBoarding == null || onBoarding.isDisposed() || tabFolder == null || tabFolder.isDisposed()
+				|| onBoardingImage == null || onBoardingImage.isDisposed()) {
+			return;
+		}
+		boolean showComposite = tabFolder.getItemCount() == 0;
+		boolean compositeVisible = onBoarding.isVisible();
+		boolean imageVisible = onBoardingImage.isVisible();
+		if (showComposite) {
+			if (!compositeVisible) {
+				onBoarding.setVisible(true);
+			}
+			Rectangle folderBounds = tabFolder.getBounds();
+			int width = folderBounds.width - 2 * ONBOARDING_SPACING;
+			int height = folderBounds.height - ONBOARDING_TOP_SPACING - ONBOARDING_SPACING;
+			if (!new Point(width, height).equals(onBoarding.getSize())) {
+				onBoarding.setSize(width, height);
+
+				boolean showImage = height > ONBOARDING_SHOW_IMAGE_HEIGHT_THRESHOLD;
+				if (imageVisible != showImage || showComposite != compositeVisible) {
+					onBoardingImage.setVisible(showImage);
+					((GridData) onBoardingImage.getLayoutData()).exclude = !showImage;
+					onboardingComposite.getParent().layout(true);
+				}
+
+			}
+		} else {
+			if (compositeVisible) {
+				onBoarding.setVisible(false);
+				onBoarding.setSize(0, 0);
+			}
+		}
 	}
 
 	private boolean getMRUValue() {
@@ -693,7 +850,6 @@ public class StackRenderer extends LazyStackRenderer {
 		// Set an initial bounds
 		trComp.pack();
 	}
-
 
 	public void adjustTopRight(final CTabFolder tabFolder) {
 		if (tabFolder.isDisposed()) {
@@ -904,7 +1060,6 @@ public class StackRenderer extends LazyStackRenderer {
 
 		// find the 'stale' tab for this element and dispose it
 		if (tabItem != null && !tabItem.isDisposed()) {
-			tabItem.setControl(null);
 			tabItem.dispose();
 		}
 	}

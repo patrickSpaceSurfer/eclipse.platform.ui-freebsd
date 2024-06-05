@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.*;
 import org.eclipse.core.runtime.*;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.core.runtime.preferences.DefaultScope;
 import org.eclipse.core.runtime.preferences.InstanceScope;
@@ -112,12 +111,12 @@ public class LogView extends ViewPart implements LogListener {
 
 	private ServiceTracker<LogReaderService, LogReaderService> logReaderServiceTracker;
 
-	private List<AbstractEntry> elements;
+	private final List<AbstractEntry> elements;
 	private Map<Object, Group> groups;
 	private LogSession currentSession;
 
-	private List<LogEntry> batchedEntries;
-	private boolean batchEntries;
+	private final List<LogEntry> batchedEntries;
+	private volatile boolean batchEntries;
 
 	private Clipboard fClipboard;
 
@@ -245,10 +244,11 @@ public class LogView extends ViewPart implements LogListener {
 
 				if (part.equals(LogView.this)) {
 					if (changeId.equals(IWorkbenchPage.CHANGE_VIEW_SHOW)) {
-						if (!batchedEntries.isEmpty()) {
-							pushBatchedEntries();
+						synchronized (batchedEntries) {
+							if (!batchedEntries.isEmpty()) {
+								pushBatchedEntries();
+							}
 						}
-
 						batchEntries = false;
 					} else if (changeId.equals(IWorkbenchPage.CHANGE_VIEW_HIDE)) {
 						batchEntries = true;
@@ -708,7 +708,7 @@ public class LogView extends ViewPart implements LogListener {
 			return;
 		}
 
-		File file = new Path(path).toFile();
+		File file = IPath.fromOSString(path).toFile();
 		if (file.exists()) {
 			handleImportPath(path);
 		} else {
@@ -760,7 +760,7 @@ public class LogView extends ViewPart implements LogListener {
 		if (path != null) {
 			if (path.indexOf('.') == -1 && !path.endsWith(".log")) //$NON-NLS-1$
 				path += ".log"; //$NON-NLS-1$
-			File outputFile = new Path(path).toFile();
+			File outputFile = IPath.fromOSString(path).toFile();
 			fDirectory = outputFile.getParent();
 			if (outputFile.exists()) {
 				String message = NLS.bind(Messages.LogView_confirmOverwrite_message, outputFile.toString());
@@ -830,15 +830,17 @@ public class LogView extends ViewPart implements LogListener {
 	}
 
 	public AbstractEntry[] getElements() {
-		return elements.toArray(new AbstractEntry[elements.size()]);
+		return elements.toArray(new AbstractEntry[0]);
 	}
 
 	public void handleClear() {
 		BusyIndicator.showWhile(fTree.getDisplay(), () -> {
-			elements.clear();
-			groups.clear();
-			if (currentSession != null) {
-				currentSession.removeAllChildren();
+			synchronized (elements) {
+				elements.clear();
+				groups.clear();
+				if (currentSession != null) {
+					currentSession.removeAllChildren();
+				}
 			}
 			asyncRefresh(false);
 			resetDialogButtons();
@@ -889,10 +891,12 @@ public class LogView extends ViewPart implements LogListener {
 	}
 
 	private void updateLogViewer(List<LogEntry> entries) {
-		elements.clear();
-		groups.clear();
-		group(entries);
-		limitEntriesCount();
+		synchronized (elements) {
+			elements.clear();
+			groups.clear();
+			group(entries);
+			limitEntriesCount();
+		}
 		setContentDescription(getTitleSummary());
 
 		asyncRefresh(false);
@@ -1083,7 +1087,9 @@ public class LogView extends ViewPart implements LogListener {
 		if (batchEntries) {
 			// create LogEntry immediately to don't loose IStatus creation date.
 			LogEntry entry = betterInput != null ? createLogEntry(betterInput) : createLogEntry(input);
-			batchedEntries.add(entry);
+			synchronized (batchedEntries) {
+				batchedEntries.add(entry);
+			}
 			return;
 		}
 
@@ -1094,11 +1100,16 @@ public class LogView extends ViewPart implements LogListener {
 		} else {
 			LogEntry entry = betterInput != null ? createLogEntry(betterInput) : createLogEntry(input);
 
-			if (!batchedEntries.isEmpty()) {
+			boolean useBatchedEntries;
+			synchronized (batchedEntries) {
+				useBatchedEntries = !batchedEntries.isEmpty();
 				// batch new entry as well, to have only one asyncRefresh()
-				batchedEntries.add(entry);
-				pushBatchedEntries();
-			} else {
+				if (useBatchedEntries) {
+					batchedEntries.add(entry);
+					pushBatchedEntries();
+				}
+			}
+			if (!useBatchedEntries) {
 				pushEntry(entry);
 				asyncRefresh(true);
 			}
@@ -1112,11 +1123,14 @@ public class LogView extends ViewPart implements LogListener {
 		Job job = new Job(Messages.LogView_AddingBatchedEvents) {
 			@Override
 			protected IStatus run(IProgressMonitor monitor) {
-				for (int i = 0; i < batchedEntries.size(); i++) {
-					if (!monitor.isCanceled()) {
-						LogEntry entry = batchedEntries.get(i);
-						pushEntry(entry);
-						batchedEntries.remove(i);
+				synchronized (batchedEntries) {
+					Iterator<LogEntry> iterator = batchedEntries.iterator();
+					while (iterator.hasNext()) {
+						if (!monitor.isCanceled()) {
+							LogEntry entry = iterator.next();
+							pushEntry(entry);
+							iterator.remove();
+						}
 					}
 				}
 				asyncRefresh(true);
@@ -1134,21 +1148,13 @@ public class LogView extends ViewPart implements LogListener {
 	private LogEntry createLogEntry(org.osgi.service.log.LogEntry input) {
 		// create a status from OSGi LogEntry
 		LogLevel logLevel = input.getLogLevel();
-		int severity;
-		switch (logLevel) {
-		case ERROR:
-			severity = IStatus.ERROR;
-			break;
-		case WARN:
-			severity = IStatus.WARNING;
-			break;
-		case INFO:
-			severity = IStatus.INFO;
-			break;
-		case DEBUG:
-		default:
-			severity = IStatus.OK;
-		}
+		int severity = switch (logLevel) {
+		case ERROR -> IStatus.ERROR;
+		case WARN -> IStatus.WARNING;
+		case INFO -> IStatus.INFO;
+		case DEBUG -> IStatus.OK;
+		default -> IStatus.OK;
+		};
 		IStatus status = new Status(severity, input.getBundle().getSymbolicName(), input.getMessage(),
 				input.getException());
 		return createLogEntry(status);
@@ -1168,10 +1174,12 @@ public class LogView extends ViewPart implements LogListener {
 		return logEntry;
 	}
 
-	private synchronized void pushEntry(LogEntry entry) {
-		if (LogReader.isLogged(entry, fMemento)) {
-			group(Collections.singletonList(entry));
-			limitEntriesCount();
+	private void pushEntry(LogEntry entry) {
+		synchronized (elements) {
+			if (LogReader.isLogged(entry, fMemento)) {
+				group(Collections.singletonList(entry));
+				limitEntriesCount();
+			}
 		}
 		asyncRefresh(true);
 	}
@@ -1223,16 +1231,25 @@ public class LogView extends ViewPart implements LogListener {
 
 	@Override
 	public void setFocus() {
-		if (!isDisposed()) {
-			if (fMemento.getBoolean(P_SHOW_FILTER_TEXT).booleanValue()) {
-				Text filterControl = fFilteredTree.getFilterControl();
-				if (filterControl != null && !filterControl.isDisposed()) {
-					filterControl.setFocus();
+		if (isDisposed()) {
+			return;
+		}
+		if (fMemento.getBoolean(P_SHOW_FILTER_TEXT).booleanValue()) {
+			Text filterControl = fFilteredTree.getFilterControl();
+			if (filterControl != null && !filterControl.isDisposed()) {
+				if (!filterControl.setFocus()) {
+					setFocusToParentComposite();
 				}
-			} else if (!fFilteredTree.isDisposed()) {
-				fFilteredTree.setFocus();
+			}
+		} else if (!fFilteredTree.isDisposed()) {
+			if (!fFilteredTree.setFocus()) {
+				setFocusToParentComposite();
 			}
 		}
+	}
+
+	private void setFocusToParentComposite() {
+		fFilteredTree.getParent().setFocus();
 	}
 
 	private void handleSelectionChanged(IStructuredSelection selection) {
@@ -1558,6 +1575,7 @@ public class LogView extends ViewPart implements LogListener {
 					date2 = ((LogSession) e2).getDate() == null ? 0 : ((LogSession) e2).getDate().getTime();
 				}
 				if (date1 == date2) {
+					// XXX: this breaks stable sort, as elements is mutable
 					int result = elements.indexOf(e2) - elements.indexOf(e1);
 					if (DATE_ORDER == DESCENDING)
 						result *= DESCENDING;
@@ -1653,6 +1671,8 @@ public class LogView extends ViewPart implements LogListener {
 							// i.e. latest log message first, therefore index(e2)-index(e1)
 							result = indexOf(children, e2) - indexOf(children, e1);
 						} else {
+							// XXX: this breaks stable sort, as elements is
+							// mutable
 							result = elements.indexOf(e1) - elements.indexOf(e2);
 						}
 						if (DATE_ORDER == DESCENDING)

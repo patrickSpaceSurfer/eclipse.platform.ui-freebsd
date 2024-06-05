@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2015 IBM Corporation and others.
+ * Copyright (c) 2000, 2022 IBM Corporation and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -79,6 +79,10 @@ public class ProgressIndicator extends Composite {
 	 * Initialize the progress bar to be animated.
 	 */
 	public void beginAnimatedTask() {
+		if (animated && layout.topControl == indeterminateProgressBar) {
+			// do not restart animation if it was already started
+			return;
+		}
 		done();
 		layout.topControl = indeterminateProgressBar;
 		requestLayout();
@@ -93,13 +97,29 @@ public class ProgressIndicator extends Composite {
 	 */
 	public void beginTask(int max) {
 		done();
+		setWork(max, 0);
+	}
+
+	/**
+	 * Initializes and resets the progress bar to a specific work. This allows to
+	 * set a progress to less then the work already done.
+	 *
+	 * @param max  The maximum value.
+	 * @param work The work already done.
+	 * @since 3.29
+	 */
+	public void setWork(int max, int work) {
 		this.totalWork = max;
-		this.sumWorked = 0;
+		this.sumWorked = work;
 		determinateProgressBar.setMinimum(0);
 		determinateProgressBar.setMaximum(PROGRESS_MAX);
-		determinateProgressBar.setSelection(0);
-		layout.topControl = determinateProgressBar;
-		requestLayout();
+		int value = (int) (sumWorked / totalWork * PROGRESS_MAX);
+		determinateProgressBar.setSelection(value);
+		// already layout?
+		if (layout.topControl != determinateProgressBar) {
+			layout.topControl = determinateProgressBar;
+			requestLayout();
+		}
 		animated = false;
 	}
 

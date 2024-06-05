@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2003, 2015 IBM Corporation and others.
+ * Copyright (c) 2003, 2023 IBM Corporation and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -225,15 +225,22 @@ public class CommonActionProviderDescriptor implements
 		}
 
 		if(aStructuredSelection.isEmpty()) {
-			IEvaluationContext context = null;
-			context = NavigatorPlugin.getEmptyEvalContext();
+			IEvaluationContext context = NavigatorPlugin.getEmptyEvalContext();
 			if (NavigatorPlugin.safeEvaluate(enablement, context) != EvaluationResult.TRUE) {
 				return false;
 			}
 		} else {
 			IEvaluationContext parentContext = NavigatorPlugin.getApplicationContext();
+			boolean isEnabled = true;
 			for (Object element : aStructuredSelection) {
 				IEvaluationContext context = new EvaluationContext(parentContext, element);
+				context.setAllowPluginActivation(true);
+				if (NavigatorPlugin.safeEvaluate(enablement, context) != EvaluationResult.TRUE) {
+					isEnabled = false;
+				}
+			}
+			if (!isEnabled) {
+				IEvaluationContext context = new EvaluationContext(parentContext, aStructuredSelection);
 				context.setAllowPluginActivation(true);
 				if (NavigatorPlugin.safeEvaluate(enablement, context) != EvaluationResult.TRUE) {
 					return false;

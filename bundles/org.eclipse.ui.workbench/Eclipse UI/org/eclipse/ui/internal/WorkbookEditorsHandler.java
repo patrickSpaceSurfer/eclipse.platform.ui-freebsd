@@ -16,10 +16,20 @@
 
 package org.eclipse.ui.internal;
 
+import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 import org.eclipse.core.commands.Command;
 import org.eclipse.core.commands.ParameterizedCommand;
+import org.eclipse.core.runtime.Adapters;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.e4.ui.model.application.ui.basic.MPart;
@@ -36,10 +46,13 @@ import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.ui.IEditorReference;
+import org.eclipse.ui.IPathEditorInput;
+import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.commands.ICommandService;
 import org.eclipse.ui.dialogs.SearchPattern;
 import org.eclipse.ui.dialogs.StyledStringHighlighter;
+import org.eclipse.ui.internal.util.Util;
 import org.eclipse.ui.themes.ITheme;
 
 /**
@@ -65,7 +78,20 @@ public class WorkbookEditorsHandler extends FilteredTableBaseHandler {
 	 */
 	private static final String TAG_ACTIVE = "active"; //$NON-NLS-1$
 
+	/**
+	 * Prefix used to mark Editors that are dirty (unsaved changes).
+	 */
+	private static final String DIRTY_PREFIX = "*"; //$NON-NLS-1$
+
+	/**
+	 * Used to signify that matching path segments have been omitted from modified
+	 * file paths.
+	 */
+	private static final String OMMITED_PATH_SEGMENTS_SIGNIFIER = "..."; //$NON-NLS-1$
+
 	private SearchPattern searchPattern;
+
+	private Map<EditorReference, String> editorReferenceColumnLabelTexts;
 
 	/**
 	 * Gets the preference "show most recently used tabs" (MRU tabs)
@@ -80,7 +106,9 @@ public class WorkbookEditorsHandler extends FilteredTableBaseHandler {
 
 	@Override
 	protected Object getInput(WorkbenchPage page) {
-		return getParts(page);
+		List<EditorReference> editorReferences = getParts(page);
+		editorReferenceColumnLabelTexts = generateColumnLabelTexts(editorReferences);
+		return editorReferences;
 	}
 
 	private List<EditorReference> getParts(WorkbenchPage page) {
@@ -96,6 +124,207 @@ public class WorkbookEditorsHandler extends FilteredTableBaseHandler {
 			}
 		}
 		return refs;
+	}
+
+	/**
+	 * Generates a mapping of EditorReferences to display label texts. If display
+	 * names collide parent directories will be added until the EditorReference can
+	 * be differentiated from all references that share the same file name. If the
+	 * collisions share multiple paths segments the shared path segments are
+	 * omitted.<br>
+	 * <br>
+	 * Example where all collisions share the same segments:
+	 *
+	 * <pre>
+	 * /project/test1/foo/bar/file -> test1/.../file
+	 * /project/test2/foo/bar/file -> test2/.../file
+	 * /project/test3/foo/bar/file -> test3/.../file
+	 * </pre>
+	 *
+	 * Example with differing segments:
+	 *
+	 * <pre>
+	 * /project/test1/foo/bar/file -> test1/.../file
+	 * /project/test2/foo/bar/file -> test2/.../file
+	 * /project/file               -> project/file
+	 * </pre>
+	 *
+	 * Example with files in root (Windows):
+	 *
+	 * <pre>
+	 * C:\project\test1\foo\bar\file -> bar\file
+	 * D:\file -> D:\file
+	 * C:\file -> C:\file
+	 * </pre>
+	 *
+	 * @param editorReferences the references for which the display label should be
+	 *                         generated
+	 * @return Mapping of EditorReferences to their display label
+	 */
+	private Map<EditorReference, String> generateColumnLabelTexts(List<EditorReference> editorReferences) {
+		Map<EditorReference, String> editorReferenceLabelTexts = new HashMap<>(editorReferences.size());
+		Map<String, List<EditorReference>> collisionsMap = editorReferences.stream()
+				.collect(Collectors.groupingBy(r -> Util.safeString(r.getTitle())));
+
+		for (Entry<String, List<EditorReference>> groupedEditorReferences : collisionsMap.entrySet()) {
+			if (groupedEditorReferences.getValue().size() == 1) {
+				groupedEditorReferences.getValue().stream().forEach(editorReference -> editorReferenceLabelTexts
+						.put(editorReference, getWorkbenchPartReferenceText(editorReference)));
+			} else {
+				List<Entry<EditorReference, IPath>> refsToMakeDistinguishableViaPathSegments = new ArrayList<>();
+				for (EditorReference editorReference : groupedEditorReferences.getValue()) {
+					try {
+						// we only detect collisions for IPathEditorInput and only if the name used by
+						// the editor reference is the filename. Otherwise, this would break scenarios
+						// where editors override the name used, e.g. for virtual file systems using
+						// org.eclipse.core.internal.filesystem.FileCache
+						IPathEditorInput iPathEditorInput = Adapters.adapt(editorReference.getEditorInput(),
+								IPathEditorInput.class);
+						IPath path;
+						if (iPathEditorInput != null && (path = iPathEditorInput.getPath()) != null
+								&& groupedEditorReferences.getKey().equals(path.lastSegment())) {
+							refsToMakeDistinguishableViaPathSegments.add(Map.entry(editorReference, path));
+						} else {
+							editorReferenceLabelTexts.put(editorReference,
+									getWorkbenchPartReferenceText(editorReference));
+						}
+					} catch (PartInitException e) {
+						// This should never happen as all the parts are initialized?
+						String message = "Expected parts to be initialized"; //$NON-NLS-1$
+						final IStatus status = new Status(IStatus.ERROR, WorkbenchPlugin.PI_WORKBENCH, 0, message, e);
+						WorkbenchPlugin.log(message, status);
+					}
+				}
+
+				if (refsToMakeDistinguishableViaPathSegments.isEmpty()) {
+					continue;
+				}
+
+				if (allReferencesToSamePath(refsToMakeDistinguishableViaPathSegments)) {
+					refsToMakeDistinguishableViaPathSegments.stream().forEach(
+							e -> editorReferenceLabelTexts.put(e.getKey(), getWorkbenchPartReferenceText(e.getKey())));
+					continue;
+				}
+
+				List<Integer> maxMatchingSegmentsList = new ArrayList<>(
+						refsToMakeDistinguishableViaPathSegments.size());
+				for (Entry<EditorReference, IPath> entry : refsToMakeDistinguishableViaPathSegments) {
+					IPath path = entry.getValue();
+					int maxMatchingSegments = -1;
+					for (int i = 0; i < refsToMakeDistinguishableViaPathSegments.size(); i++) {
+						IPath currentPath = refsToMakeDistinguishableViaPathSegments.get(i).getValue();
+						if (currentPath.equals(path)) {
+							continue;
+						}
+						int currentMatchingSegments = matchingLastSegments(path, currentPath);
+						maxMatchingSegments = maxMatchingSegments < currentMatchingSegments ? currentMatchingSegments
+								: maxMatchingSegments;
+					}
+					maxMatchingSegmentsList.add(maxMatchingSegments);
+				}
+
+				for (int i = 0; i < maxMatchingSegmentsList.size(); i++) {
+					EditorReference editorReference = refsToMakeDistinguishableViaPathSegments.get(i).getKey();
+					Integer maxMatchingSegment = maxMatchingSegmentsList.get(i);
+					IPath path = refsToMakeDistinguishableViaPathSegments.get(i).getValue();
+
+					String labelText = generateLabelText(editorReference, path, maxMatchingSegment);
+					editorReferenceLabelTexts.put(editorReference, labelText);
+				}
+			}
+		}
+		return editorReferenceLabelTexts;
+	}
+
+	/**
+	 * Usually it's not possible to open a file in multiple editors. But when an
+	 * editor gets split (Toggle Split Editor) or cloned (Clone Editor) then
+	 * multiples editor references can point to the same path.
+	 *
+	 * @param groupedEditorReferences the editor references grouped by matching file
+	 *                                name
+	 * @return if all references point to the same path
+	 */
+	private boolean allReferencesToSamePath(List<Entry<EditorReference, IPath>> groupedEditorReferences) {
+		return groupedEditorReferences.stream().map(Entry::getValue)
+				.allMatch(groupedEditorReferences.get(0).getValue()::equals);
+	}
+
+	/**
+	 * Generates the display text for the editor reference. Also see
+	 * {@link #generateColumnLabelTexts(List)}.
+	 *
+	 * @param editorReference         the EditorReference to generate the label text
+	 *                                for
+	 * @param path                    path of the EditorReference
+	 * @param maxMatchingSegment      the maximal amount of sections this reference
+	 *                                shares with a conflicting reference, including
+	 *                                the file itself
+	 * @return the final label text for the editor reference
+	 */
+	private String generateLabelText(EditorReference editorReference, IPath path,
+			Integer maxMatchingSegment) {
+		String labelText;
+		java.nio.file.Path npath = path.toFile().toPath();
+			String lastSegment = npath.getFileName().toString();
+			StringBuilder prependedSegment = new StringBuilder();
+			if (maxMatchingSegment < npath.getNameCount()) {
+				prependedSegment = prependedSegment.append(getPathSegment(maxMatchingSegment, npath).toString());
+				if (maxMatchingSegment > 1) {
+					prependedSegment = prependedSegment.append(File.separator).append(OMMITED_PATH_SEGMENTS_SIGNIFIER);
+				}
+				prependedSegment = prependedSegment.append(File.separator);
+			} else {
+				prependedSegment = prependedSegment.append(npath.getRoot());
+			}
+			labelText = prependedSegment.append(lastSegment).toString();
+		return prependDirtyIndicationIfDirty(editorReference, labelText);
+	}
+
+	/**
+	 * @param segmentIndex Index of the segment to retrieve
+	 * @param path         Path to retrieve the segment from
+	 * @return Path segment at the given segmentIndex
+	 */
+	private Path getPathSegment(Integer segmentIndex, java.nio.file.Path path) {
+		return path.subpath(path.getNameCount() - 1 - segmentIndex, path.getNameCount() - segmentIndex);
+	}
+
+	/**
+	 * Prepends a {@code *} to the labelText if editorReference is dirty.
+	 *
+	 * @param editorReference reference to check for dirty state
+	 * @param labelText       the label text for the editorReference
+	 * @return text with dirty indication when appropriate
+	 */
+	private String prependDirtyIndicationIfDirty(EditorReference editorReference, String labelText) {
+		if (editorReference.isDirty()) {
+			return DIRTY_PREFIX + labelText;
+		}
+		return labelText;
+	}
+
+	/**
+	 * Returns a count of the number of segments which match in this path and the
+	 * given path (device ids are ignored), comparing in decreasing segment number
+	 * order starting at the last segment.
+	 *
+	 * @param path
+	 * @param anotherPath the other path to compare with
+	 * @return the number of matching segments
+	 */
+	private int matchingLastSegments(IPath path, IPath anotherPath) {
+		int thisPathLen = path.segmentCount();
+		int anotherPathLen = anotherPath.segmentCount();
+		int max = Math.min(thisPathLen, anotherPathLen);
+		int count = 0;
+		for (int i = 1; i <= max; i++) {
+			if (!path.segment(thisPathLen - i).equals(anotherPath.segment(anotherPathLen - i))) {
+				return count;
+			}
+			count++;
+		}
+		return count;
 	}
 
 	@Override
@@ -126,6 +355,7 @@ public class WorkbookEditorsHandler extends FilteredTableBaseHandler {
 	protected void setLabelProvider(final TableViewerColumn tableViewerColumn) {
 
 		tableViewerColumn.setLabelProvider(new StyledCellLabelProvider() {
+			private BoldStylerProvider boldStylerProvider;
 
 			/* called once for each element in the table */
 			@Override
@@ -133,7 +363,7 @@ public class WorkbookEditorsHandler extends FilteredTableBaseHandler {
 				Object element = cell.getElement();
 				if (element instanceof WorkbenchPartReference) {
 					WorkbenchPartReference ref = (WorkbenchPartReference) element;
-					String text = getWorkbenchPartReferenceText(ref);
+					String text = editorReferenceColumnLabelTexts.get(ref);
 					cell.setText(text);
 					cell.setImage(ref.getTitleImage());
 
@@ -143,9 +373,7 @@ public class WorkbookEditorsHandler extends FilteredTableBaseHandler {
 					} else {
 						String pattern = matcher.getPattern();
 						StyledStringHighlighter ssh = new StyledStringHighlighter();
-						StyledString ss = ssh.highlight(text, pattern,
-								new BoldStylerProvider(WorkbookEditorsHandler.this.getFont(false, true))
-										.getBoldStyler());
+						StyledString ss = ssh.highlight(text, pattern, getBoldStylerProvider().getBoldStyler());
 						cell.setStyleRanges(ss.getStyleRanges());
 					}
 
@@ -162,6 +390,22 @@ public class WorkbookEditorsHandler extends FilteredTableBaseHandler {
 				return super.getToolTipText(element);
 			}
 
+			private BoldStylerProvider getBoldStylerProvider() {
+				if (boldStylerProvider == null) {
+					boldStylerProvider = new BoldStylerProvider(WorkbookEditorsHandler.this.getFont(false, true));
+				}
+				return boldStylerProvider;
+			}
+
+			@Override
+			public void dispose() {
+				super.dispose();
+
+				if (boldStylerProvider != null) {
+					boldStylerProvider.dispose();
+					boldStylerProvider = null;
+				}
+			}
 		});
 
 		ColumnViewerToolTipSupport.enableFor(tableViewerColumn.getViewer());
@@ -205,18 +449,27 @@ public class WorkbookEditorsHandler extends FilteredTableBaseHandler {
 				if (matcher == null || !(viewer instanceof TableViewer)) {
 					return true;
 				}
-				String matchName = null;
+				String editorTitle = null;
+				String editorLabel = null;
 				if (element instanceof EditorReference) {
-					matchName = ((EditorReference) element).getTitle();
-					// skips dirty editor prefix
-					if (matchName.startsWith("*")) { //$NON-NLS-1$
-						matchName = matchName.substring(1);
-					}
+					editorTitle = removeDirtyPrefix(((EditorReference) element).getTitle());
+					editorLabel = removeDirtyPrefix(editorReferenceColumnLabelTexts.get(element));
 				}
+				return (editorTitle != null && matcher.matches(editorTitle))
+						|| (editorLabel != null && matcher.matches(editorLabel));
+			}
+
+			/**
+			 * Removes the dirty prefix if the input is not null and starts with the dirty
+			 * prefix. Otherwise returns the input unchanged.
+			 */
+			private String removeDirtyPrefix(String matchName) {
 				if (matchName == null) {
-					return false;
+					return null;
+				} else if (matchName.startsWith(DIRTY_PREFIX)) {
+					return matchName.substring(1);
 				}
-				return matcher.matches(matchName);
+				return matchName;
 			}
 		};
 	}

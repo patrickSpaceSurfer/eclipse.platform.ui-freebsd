@@ -101,7 +101,7 @@ public abstract class MarkerField {
 					}
 				}
 				if (descriptors[IDecoration.TOP_RIGHT] != null || descriptors[IDecoration.BOTTOM_RIGHT] != null)
-					image = getImageManager().createImage(new DecorationOverlayIcon(image, descriptors));
+					image = getImageManager().create(new DecorationOverlayIcon(image, descriptors));
 			}
 		}
 		return image;
@@ -252,8 +252,10 @@ public abstract class MarkerField {
 	 * @param cell cell to update; not <code>null</code>
 	 */
 	public void update(ViewerCell cell) {
-		cell.setText(getValue((MarkerItem) cell.getElement()));
-		cell.setImage(null);
+		if (cell.getElement() instanceof MarkerItem element) {
+			cell.setText(getValue(element));
+			cell.setImage(null);
+		}
 	}
 
 	@Override

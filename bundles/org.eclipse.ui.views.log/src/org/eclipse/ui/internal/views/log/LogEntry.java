@@ -18,7 +18,11 @@ package org.eclipse.ui.internal.views.log;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.text.*;
+import java.text.ParseException;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import org.eclipse.core.runtime.IStatus;
 
@@ -29,8 +33,10 @@ public class LogEntry extends AbstractEntry {
 
 	public static final String SPACE = " "; //$NON-NLS-1$
 	public static final String F_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss.SSS"; //$NON-NLS-1$
-	private static final DateFormat GREGORIAN_SDF = new SimpleDateFormat(F_DATE_FORMAT, Locale.ENGLISH);
-	private static final DateFormat LOCAL_SDF = new SimpleDateFormat(F_DATE_FORMAT);
+	private static final DateTimeFormatter GREGORIAN_SDF = DateTimeFormatter.ofPattern(F_DATE_FORMAT, Locale.ENGLISH)
+			.withZone(ZoneId.systemDefault());
+	private static final DateTimeFormatter LOCAL_SDF = DateTimeFormatter.ofPattern(F_DATE_FORMAT)
+			.withZone(ZoneId.systemDefault());
 
 	private String pluginId;
 	private int severity;
@@ -146,7 +152,7 @@ public class LogEntry extends AbstractEntry {
 	 */
 	public String getFormattedDate() {
 		if (fDateString == null) {
-			fDateString = LOCAL_SDF.format(getDate());
+			fDateString = LOCAL_SDF.format(getDate().toInstant());
 		}
 		return fDateString;
 	}
@@ -240,10 +246,17 @@ public class LogEntry extends AbstractEntry {
 				}
 			}
 		}
-		Date date = GREGORIAN_SDF.parse(dateBuffer.toString());
-		if (date != null) {
-			fDate = date;
-			fDateString = LOCAL_SDF.format(fDate);
+		String stringToParse = dateBuffer.toString();
+		try {
+			Date date = Date.from(Instant.from(GREGORIAN_SDF.parse(stringToParse)));
+			if (date != null) {
+				fDate = date;
+				fDateString = LOCAL_SDF.format(fDate.toInstant());
+			}
+		} catch (DateTimeParseException e) {
+			ParseException parseException = new ParseException(e.getMessage(), e.getErrorIndex());
+			parseException.addSuppressed(e);
+			throw parseException;
 		}
 	}
 
@@ -310,10 +323,10 @@ public class LogEntry extends AbstractEntry {
 				}
 			}
 		}
-		Date date = GREGORIAN_SDF.parse(dateBuffer.toString());
+		Date date = Date.from(Instant.from(GREGORIAN_SDF.parse(dateBuffer.toString())));
 		if (date != null) {
 			fDate = date;
-			fDateString = LOCAL_SDF.format(fDate);
+			fDateString = LOCAL_SDF.format(fDate.toInstant());
 		}
 		return depth;
 	}
@@ -345,7 +358,7 @@ public class LogEntry extends AbstractEntry {
 		severity = status.getSeverity();
 		code = status.getCode();
 		fDate = new Date();
-		fDateString = LOCAL_SDF.format(fDate);
+		fDateString = LOCAL_SDF.format(fDate.toInstant());
 		message = status.getMessage();
 		this.session = session;
 		Throwable throwable = status.getException();

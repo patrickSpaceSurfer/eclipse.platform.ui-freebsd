@@ -13,21 +13,16 @@
  *******************************************************************************/
 package org.eclipse.e4.ui.tests.css.swt;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Tree;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TreeTest extends CSSSWTTestCase {
-
-	static final RGB RED = new RGB(255, 0, 0);
-	static final RGB GREEN = new RGB(0, 255, 0);
-	static final RGB BLUE = new RGB(0, 0, 255);
 
 	protected Tree createTestTree(String styleSheet) {
 		engine = createEngine(styleSheet, display);
@@ -50,14 +45,14 @@ public class TreeTest extends CSSSWTTestCase {
 	}
 
 	@Test
-	public void testTreeColor() {
+	void testTreeColor() {
 		Tree tableToTest = createTestTree("Tree { background-color: #FF0000; color: #0000FF }");
 		assertEquals(RED, tableToTest.getBackground().getRGB());
 		assertEquals(BLUE, tableToTest.getForeground().getRGB());
 	}
 
 	@Test
-	public void testTreeHeaderColor() {
+	void testTreeHeaderColor() {
 		Tree tableToTest = createTestTree("Tree { swt-header-background-color: #FF0000; swt-header-color: #0000FF }");
 		assertEquals(RED, tableToTest.getHeaderBackground().getRGB());
 		assertEquals(BLUE, tableToTest.getHeaderForeground().getRGB());

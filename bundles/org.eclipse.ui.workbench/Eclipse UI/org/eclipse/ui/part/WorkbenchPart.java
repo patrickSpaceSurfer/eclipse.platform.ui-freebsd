@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2019 IBM Corporation and others.
+ * Copyright (c) 2000, 2022 IBM Corporation and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -36,6 +36,7 @@ import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IPropertyListener;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.IWorkbenchPart;
@@ -102,7 +103,11 @@ public abstract class WorkbenchPart extends EventManager
 	 */
 	@Override
 	public void dispose() {
-		imageDescriptor.ifPresent(JFaceResources.getResources()::destroyImage);
+		imageDescriptor.ifPresent(d -> {
+			if (Display.getCurrent() != null) {
+				JFaceResources.getResources().destroy(d);
+			} // otherwise Device already destroyed => ignore
+		});
 		titleImage = null;
 
 		// Clear out the property change listeners as we
@@ -295,7 +300,7 @@ public abstract class WorkbenchPart extends EventManager
 		}
 		this.titleImage = titleImage;
 		firePropertyChange(IWorkbenchPart.PROP_TITLE);
-		imageDescriptor.ifPresent(JFaceResources.getResources()::destroyImage);
+		imageDescriptor.ifPresent(JFaceResources.getResources()::destroy);
 		imageDescriptor = Optional.empty();
 	}
 

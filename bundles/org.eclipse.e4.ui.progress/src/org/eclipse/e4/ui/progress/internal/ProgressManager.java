@@ -30,14 +30,11 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
-
+import org.eclipse.core.runtime.ICoreRunnable;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.ListenerList;
 import org.eclipse.core.runtime.QualifiedName;
-import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.IJobChangeEvent;
 import org.eclipse.core.runtime.jobs.IJobChangeListener;
 import org.eclipse.core.runtime.jobs.Job;
@@ -55,6 +52,9 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.ImageLoader;
 import org.eclipse.swt.widgets.Display;
+
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
 
 /**
  * JobProgressManager provides the progress monitor to the job manager and
@@ -77,7 +77,7 @@ public class ProgressManager extends ProgressProvider {
 	private static ProgressManager singleton;
 
 	final private Map<Job, JobInfo> jobs = Collections
-			.synchronizedMap(new HashMap<Job, JobInfo>());
+			.synchronizedMap(new HashMap<>());
 
 	final Map<Job, JobMonitor> runnableMonitors = new HashMap<>();
 
@@ -436,18 +436,10 @@ public class ProgressManager extends ProgressProvider {
 					boolean noDialog = shouldRunInBackground();
 					if (!noDialog) {
 						final IJobChangeEvent finalEvent = event;
-						Job showJob = new UIJob(
-								ProgressMessages.ProgressManager_showInDialogName) {
-							@Override
-							public IStatus runInUIThread(
-									IProgressMonitor monitor) {
-								progressService.showInDialog(null, finalEvent.getJob());
-								return Status.OK_STATUS;
-							}
-						};
+						Job showJob = UIJob.create(ProgressMessages.ProgressManager_showInDialogName,
+								(ICoreRunnable) m -> progressService.showInDialog(null, finalEvent.getJob()));
 						showJob.setSystem(true);
 						showJob.schedule();
-						return;
 					}
 				}
 			}

@@ -77,7 +77,7 @@ public class MultiInstancePropertySheetTest extends AbstractPropertySheetTest {
 	 * many listeners are notified of events through a SafeRunner, errors caused
 	 * by mishandling of events are not propagated back to our test methods.
 	 */
-	private ILogListener logListener = (status, plugin) -> {
+	private final ILogListener logListener = (status, plugin) -> {
 		// check if it's an error
 		if (status.getSeverity() == IStatus.ERROR) {
 			// retrieve the underlying exception and wrap it if possible
@@ -619,8 +619,7 @@ public class MultiInstancePropertySheetTest extends AbstractPropertySheetTest {
 
 		IPage currentPage = propertySheet.getCurrentPage();
 		if (standardPage) {
-			if (currentPage instanceof PropertySheetPage) {
-				PropertySheetPage psp = (PropertySheetPage) currentPage;
+			if (currentPage instanceof PropertySheetPage psp) {
 				Field root = PropertySheetPage.class.getDeclaredField("rootEntry");
 				root.setAccessible(true);
 				PropertySheetEntry pse = (PropertySheetEntry) root.get(psp);

@@ -165,16 +165,23 @@ public class DetailedProgressViewer extends AbstractProgressViewer {
 
 	@Override
 	public void add(JobTreeElement... elements) {
-		ViewerComparator sorter = getComparator();
-
-		// Use a Set in case we are getting something added that exists
-		Set<JobTreeElement> newItems = new LinkedHashSet<>(jobItemControls.keySet());
+		Set<JobTreeElement> items = getItems();
 		for (JobTreeElement element : elements) {
 			if (element != null) {
-				newItems.add(element);
+				items.add(element);
 			}
 		}
+		updateItems(items);
+	}
 
+	private Set<JobTreeElement> getItems() {
+		// Use a Set in case we are getting something added that exists
+		Set<JobTreeElement> newItems = new LinkedHashSet<>(jobItemControls.keySet());
+		return newItems;
+	}
+
+	private void updateItems(Set<JobTreeElement> newItems) {
+		ViewerComparator sorter = getComparator();
 		JobTreeElement[] infos = newItems.toArray(new JobTreeElement[0]);
 		if (sorter != null) {
 			sorter.sort(this, infos);
@@ -369,37 +376,29 @@ public class DetailedProgressViewer extends AbstractProgressViewer {
 	@Override
 	public void remove(JobTreeElement... elements) {
 
-		for (Object element : elements) {
-			JobTreeElement treeElement = (JobTreeElement) element;
+		Set<JobTreeElement> items = getItems();
+		for (JobTreeElement element : elements) {
 			// Make sure we are not keeping this one
-			if (FinishedJobs.getInstance().isKept(treeElement)) {
+			if (FinishedJobs.getInstance().isKept(element)) {
 				Widget item = doFindItem(element);
 				if (item != null) {
 					((ProgressInfoItem) item).refresh();
 				}
 
 			} else {
-				Widget item = doFindItem(treeElement);
+				Widget item = doFindItem(element);
 				if (item == null) {
 					// Is the parent showing?
-					JobTreeElement parent = treeElement.getParent();
+					JobTreeElement parent = element.getParent();
 					if (parent != null && parent != element)
 						remove(parent);
 				}
-				if (item != null) {
-					jobItemControls.remove(element);
-					unmapElement(element);
-					item.dispose();
-				}
+				items.remove(element);
+				unmapElement(element);
 			}
 		}
-
-		Control[] existingChildren = control.getChildren();
-		for (int i = 0; i < existingChildren.length; i++) {
-			ProgressInfoItem item = (ProgressInfoItem) existingChildren[i];
-			item.setColor(i);
-		}
-		updateForShowingProgress();
+		 // also sort again, otherwise removed job may appear at top again:
+		updateItems(items);
 	}
 
 	@Override

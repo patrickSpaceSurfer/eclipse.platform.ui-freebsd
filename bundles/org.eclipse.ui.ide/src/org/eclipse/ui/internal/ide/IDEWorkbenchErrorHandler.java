@@ -20,7 +20,6 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.IDialogConstants;
@@ -108,18 +107,11 @@ public class IDEWorkbenchErrorHandler extends WorkbenchErrorHandler {
 
 		// if fatal error occurs, we will ask to close the workbench
 		if (isFatal(statusAdapter)) {
-			UIJob handlingExceptionJob = new UIJob("IDE Exception Handler") //$NON-NLS-1$
-			{
-				@Override
-				public IStatus runInUIThread(IProgressMonitor monitor) {
-					handleException(statusAdapter.getStatus().getException());
-					return new Status(
-							IStatus.OK,
-							IDEWorkbenchPlugin.IDE_WORKBENCH,
-							IDEWorkbenchMessages.IDEExceptionHandler_ExceptionHandledMessage);
-				}
-
-			};
+			UIJob handlingExceptionJob = UIJob.create("IDE Exception Handler", m -> { //$NON-NLS-1$
+				handleException(statusAdapter.getStatus().getException());
+				return new Status(IStatus.OK, IDEWorkbenchPlugin.IDE_WORKBENCH,
+						IDEWorkbenchMessages.IDEExceptionHandler_ExceptionHandledMessage);
+			});
 
 			handlingExceptionJob.setSystem(true);
 			handlingExceptionJob.schedule();
@@ -141,9 +133,13 @@ public class IDEWorkbenchErrorHandler extends WorkbenchErrorHandler {
 		try {
 			exceptionCount++;
 			if (exceptionCount > 1) {
-				dialog.updateMessage(MessageFormat.format(MSG_FATAL_ERROR,
-						MSG_FATAL_ERROR_Recursive));
-				dialog.getShell().forceActive();
+				try {
+					dialog.updateMessage(MessageFormat.format(MSG_FATAL_ERROR, MSG_FATAL_ERROR_Recursive));
+					dialog.getShell().forceActive();
+				} catch (Exception e) {
+					// avoid further explosion of recursive exceptions
+					e.printStackTrace();
+				}
 			} else if (openQuestionDialog(t)) {
 				closeWorkbench();
 			}
@@ -287,8 +283,10 @@ public class IDEWorkbenchErrorHandler extends WorkbenchErrorHandler {
 		 */
 		public void updateMessage(String message) {
 			this.message = message;
-			this.messageLabel.setText(message);
-			this.messageLabel.update();
+			if (messageLabel != null && !messageLabel.isDisposed()) {
+				this.messageLabel.setText(message);
+				this.messageLabel.update();
+			}
 		}
 	}
 }

@@ -19,7 +19,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.core.expressions.EvaluationResult;
@@ -92,8 +91,8 @@ public class EvaluationServiceTest extends UITestCase {
 		public void propertyChange(PropertyChangeEvent event) {
 			count++;
 			if (event.getProperty() == IEvaluationService.RESULT
-					&& event.getNewValue() instanceof Boolean) {
-				currentValue = ((Boolean) event.getNewValue()).booleanValue();
+					&& event.getNewValue() instanceof Boolean bool) {
+				currentValue = bool.booleanValue();
 			}
 		}
 	}
@@ -415,9 +414,12 @@ public class EvaluationServiceTest extends UITestCase {
 
 		@Override
 		public EvaluationResult evaluate(IEvaluationContext context) {
-			String variable = (String) context.getVariable("username");
-			return lookFor.equals(variable) ? EvaluationResult.TRUE
-					: EvaluationResult.FALSE;
+			Object o = context.getVariable("username");
+			if (o instanceof String) {
+				String variable = (String) o;
+				return lookFor.equals(variable) ? EvaluationResult.TRUE : EvaluationResult.FALSE;
+			}
+			return EvaluationResult.FALSE;
 		}
 	}
 
@@ -494,9 +496,7 @@ public class EvaluationServiceTest extends UITestCase {
 		}
 
 		IHandlerActivation activation = null;
-		Iterator<IHandlerActivation> i = activations.iterator();
-		while (i.hasNext()) {
-			IHandlerActivation ha = i.next();
+		for (IHandlerActivation ha : activations) {
 			if (CHECK_HANDLER_ID.equals(ha.getCommandId())) {
 				activation = ha;
 			}
@@ -580,7 +580,7 @@ public class EvaluationServiceTest extends UITestCase {
 	}
 
 	static class ActivePartIdExpression extends Expression {
-		private String partId;
+		private final String partId;
 
 		public ActivePartIdExpression(String id) {
 			partId = id;
@@ -637,12 +637,12 @@ public class EvaluationServiceTest extends UITestCase {
 				IWorkbenchPart part = null;
 				Object o = state
 						.getVariable(ISources.ACTIVE_CURRENT_SELECTION_NAME);
-				if (o instanceof ISelection) {
-					sel = (ISelection) o;
+				if (o instanceof ISelection s) {
+					sel = s;
 				}
 				o = state.getVariable(ISources.ACTIVE_PART_NAME);
-				if (o instanceof IWorkbenchPart) {
-					part = (IWorkbenchPart) o;
+				if (o instanceof IWorkbenchPart iwp) {
+					part = iwp;
 				}
 				selection.add(new PartSelection(sel, part));
 			} catch (Exception e) {

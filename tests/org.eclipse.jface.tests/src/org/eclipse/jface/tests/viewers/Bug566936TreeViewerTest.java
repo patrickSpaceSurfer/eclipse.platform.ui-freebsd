@@ -57,7 +57,7 @@ public class Bug566936TreeViewerTest {
 
 	private class MyEditingSupport extends EditingSupport {
 
-		private String property;
+		private final String property;
 
 		public MyEditingSupport(ColumnViewer viewer, String property) {
 			super(viewer);
@@ -94,8 +94,8 @@ public class Bug566936TreeViewerTest {
 			this.columnIndex = columnIndex;
 		}
 
-		private int columnIndex;
-		private Tree tree;
+		private final int columnIndex;
+		private final Tree tree;
 
 		@Override
 		public String getText(Object element) {
@@ -105,8 +105,8 @@ public class Bug566936TreeViewerTest {
 		@SuppressWarnings("rawtypes")
 		@Override
 		public Object[] getElements(Object inputElement) {
-			if (inputElement instanceof List) {
-				return ((List) inputElement).toArray();
+			if (inputElement instanceof List list) {
+				return list.toArray();
 			}
 			return new Object[0];
 		}

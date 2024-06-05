@@ -18,6 +18,9 @@
  *******************************************************************************/
 package org.eclipse.e4.ui.internal.workbench.swt;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -28,9 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
-import javax.inject.Named;
 import org.eclipse.core.databinding.observable.Realm;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IConfigurationElement;
@@ -263,7 +263,7 @@ public class PartRenderingEngine implements IPresentationEngine {
 				}
 			}
 		} else if (UIEvents.isREMOVE(event)) {
-			for (Object o : UIEvents.asIterable(event, UIEvents.EventTags.NEW_VALUE)) {
+			for (Object o : UIEvents.asIterable(event, UIEvents.EventTags.OLD_VALUE)) {
 				MUIElement removed = (MUIElement) o;
 				if (removed.getRenderer() != null) {
 					removeGui(removed);

@@ -14,7 +14,7 @@
  *******************************************************************************/
 package org.eclipse.e4.ui.workbench.renderers.swt;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.e4.core.di.annotations.Optional;
 import org.eclipse.e4.ui.di.UIEventTopic;
@@ -121,7 +121,7 @@ public class SashRenderer extends SWTPartRenderer {
 				// 'Adopt' the previous root's layout / composite
 				sashComposite = (Composite) psce.getWidget();
 				bindWidget(psce, new Rectangle(0, 0, 0, 0));
-				
+
 				sashComposite.setParent((Composite) parent);
 			}
 		}

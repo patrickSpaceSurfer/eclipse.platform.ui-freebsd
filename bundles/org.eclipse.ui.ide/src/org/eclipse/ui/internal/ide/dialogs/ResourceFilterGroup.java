@@ -1181,11 +1181,10 @@ public class ResourceFilterGroup {
 	 * @return true if the filters changed
 	 */
 	public boolean performOk() {
-
+		if (resource == null || filters == null) {
+			return true;
+		}
 		if (filters.hasChanged()) {
-			if (resource == null)
-				return true;
-
 			try {
 				if (resource != nonExistantResource) {
 					IResourceFilterDescription[] oldFilters = resource.getFilters();
@@ -1299,7 +1298,7 @@ public class ResourceFilterGroup {
 			return null;
 		}
 
-		private final String MYTYPENAME = "org.eclipse.ui.ide.internal.filterCopy"; //$NON-NLS-1$
+		private static final String MYTYPENAME = "org.eclipse.ui.ide.internal.filterCopy"; //$NON-NLS-1$
 		private final int MYTYPEID = registerType(MYTYPENAME);
 
 		@Override
@@ -2666,13 +2665,13 @@ class MultiMatcherCustomFilterArgumentUI implements ICustomFilterArgumentUI {
 			arguments.addModifyListener(e -> validateInputText());
 
 			dummyLabel1 = new Label(multiArgumentComposite, SWT.NONE);
-			data = new GridData(SWT.LEFT, SWT.CENTER, true, true);
+			data = new GridData(SWT.LEFT, SWT.CENTER, false, true);
 			dummyLabel1.setText(""); //$NON-NLS-1$
 			data.horizontalSpan = 1;
 			dummyLabel1.setLayoutData(data);
 
 			dummyLabel2 = new Label(multiArgumentComposite, SWT.NONE);
-			data = new GridData(SWT.LEFT, SWT.CENTER, true, true);
+			data = new GridData(SWT.LEFT, SWT.CENTER, false, true);
 			dummyLabel2.setText(""); //$NON-NLS-1$
 			data.horizontalSpan = 1;
 			dummyLabel2.setLayoutData(data);

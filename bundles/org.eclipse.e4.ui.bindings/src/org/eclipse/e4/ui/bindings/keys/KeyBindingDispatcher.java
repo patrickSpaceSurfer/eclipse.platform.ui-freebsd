@@ -15,13 +15,13 @@
 
 package org.eclipse.e4.ui.bindings.keys;
 
+import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.inject.Inject;
 import org.eclipse.core.commands.Command;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.commands.IHandler;
@@ -606,6 +606,14 @@ public class KeyBindingDispatcher {
 						errorMatch = errorMatches;
 						if (isTracingEnabled()) {
 							logger.trace("Error matches for key: " + sequenceAfterKeyStroke + ", :" + errorMatches); //$NON-NLS-1$//$NON-NLS-2$
+						}
+
+						if (sequenceBeforeKeyStroke.isEmpty() && keyAssistDialog != null
+								&& keyAssistDialog.isShowingBindings(errorMatches)) {
+							if (isTracingEnabled()) {
+								logger.trace("Key assist dialog is already showing error matches: " + errorMatches); //$NON-NLS-1$
+							}
+							return false;
 						}
 					} else if (isTracingEnabled() && !Character.isLetterOrDigit(event.character)) {
 						logger.trace("No binding for keys: " + sequenceBeforeKeyStroke + " " //$NON-NLS-1$//$NON-NLS-2$

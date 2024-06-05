@@ -26,6 +26,7 @@
  * Lucas Bullen (Red Hat Inc.) - Bug 522096
  * Gunnar Wagenknecht - [102527] Project Natures property page
  * Mickael Istria (Red Hat Inc) - [102527] Project Natures property page
+ * Ingo Mohr <tellastory73@gmail.com> - Issue #198
  *******************************************************************************/
 package org.eclipse.ui.internal.ide;
 
@@ -573,6 +574,8 @@ public class IDEWorkbenchMessages extends NLS {
 	public static String IDEWorkbenchPreference_workbenchSystemExplorer;
 	public static String IDEWorkspacePreference_UnknownNatureSeverity;
 	public static String IDEWorkspacePreference_UnknownNatureSeverity_Ignore;
+	public static String IDEWorkspacePreference_UnknownEncodingSeverity;
+	public static String IDEWorkspacePreference_UnknownEncodingSeverity_Ignore;
 
 	// --- Linked Resources ---
 	public static String LinkedResourcesPreference_explanation;
@@ -1010,6 +1013,7 @@ public class IDEWorkbenchMessages extends NLS {
 	public static String ChooseWorkspaceDialog_defaultProductName;
 	public static String ChooseWorkspaceDialog_workspaceEntryLabel;
 	public static String ChooseWorkspaceDialog_browseLabel;
+	public static String ChooseWorkspaceDialog_browseTooltip;
 	public static String ChooseWorkspaceDialog_launchLabel;
 	public static String ChooseWorkspaceDialog_directoryBrowserTitle;
 	public static String ChooseWorkspaceDialog_directoryBrowserMessage;

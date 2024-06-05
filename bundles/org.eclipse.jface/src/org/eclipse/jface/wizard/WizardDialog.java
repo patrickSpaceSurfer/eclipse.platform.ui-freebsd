@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2018 IBM Corporation and others.
+ * Copyright (c) 2000, 2023 IBM Corporation and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -319,8 +319,8 @@ public class WizardDialog extends TitleAreaDialog implements IWizardContainer2, 
 	 * Sets the shell style of the wizard dialog.
 	 * <p>
 	 * Examples:<br>
-	 * To use the default style without the SWT.APPLICATION_MODAL bit:<br>
-	 * <code>setShellStyle(getShellStyle() &amp; ~SWT.APPLICATION_MODAL)</code>
+	 * To use the default style without the SWT.PRIMARY_MODAL bit:<br>
+	 * <code>setShellStyle(getShellStyle() &amp; ~SWT.PRIMARY_MODAL)</code>
 	 * <p>
 	 * To use the default style without the SWT.RESIZE bit:<br>
 	 * <code>setShellStyle(getShellStyle() &amp; ~SWT.RESIZE)</code>
@@ -342,7 +342,7 @@ public class WizardDialog extends TitleAreaDialog implements IWizardContainer2, 
 	}
 
 	private static int getShellModality(boolean modal) {
-		return modal ? SWT.APPLICATION_MODAL : SWT.NONE;
+		return modal ? SWT.PRIMARY_MODAL : SWT.NONE;
 	}
 
 	/**
@@ -356,7 +356,7 @@ public class WizardDialog extends TitleAreaDialog implements IWizardContainer2, 
 	 * @since 3.16
 	 */
 	public WizardDialog setModal(boolean modal) {
-		setShellStyle(getShellStyle() & ~SWT.APPLICATION_MODAL | getShellModality(modal));
+		setShellStyle(getShellStyle() & ~SWT.PRIMARY_MODAL & ~SWT.APPLICATION_MODAL | getShellModality(modal));
 		return this;
 	}
 
@@ -368,7 +368,8 @@ public class WizardDialog extends TitleAreaDialog implements IWizardContainer2, 
 	 * @see #setShellStyle(int)
 	 */
 	public boolean isModal() {
-		return (getShellStyle() & SWT.APPLICATION_MODAL) == SWT.APPLICATION_MODAL;
+		return (getShellStyle() & SWT.PRIMARY_MODAL) == SWT.PRIMARY_MODAL
+				|| (getShellStyle() & SWT.PRIMARY_MODAL) == SWT.APPLICATION_MODAL;
 	}
 
 	/**
@@ -747,6 +748,10 @@ public class WizardDialog extends TitleAreaDialog implements IWizardContainer2, 
 			if (page.getControl() != null) {
 				page.getControl().setVisible(false);
 			}
+		}
+		Point minWizardSize = wizard.getMinimumWizardSize();
+		if (minWizardSize != null) {
+			getShell().setMinimumSize(minWizardSize);
 		}
 	}
 

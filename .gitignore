@@ -1,14 +1,21 @@
-/*/*/bin/
+/**/bin/
 /*/*/target
+*~
+/.settings/
+/.project
+# maven
+target/
+.DS_Store
+.polyglot.*
+pom.tycho
 *~
 *.rej
 *.bak
+*.patch
 javacore.*
 heapdump.*
 core.*
 Snap.*
-/.settings/
-/.project
+target/
 .DS_Store
-.polyglot.META-INF
-
+.metadata
