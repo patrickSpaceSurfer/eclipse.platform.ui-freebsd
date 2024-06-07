@@ -14,7 +14,6 @@
 
 package org.eclipse.ui.internal;
 
-import java.util.ArrayList;
 import java.util.Objects;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IMemento;
@@ -66,7 +65,8 @@ public class NavigationHistoryEntry {
 	void restoreLocation() {
 		if (editorInfo.editorInput != null && editorInfo.editorID != null) {
 			try {
-				IEditorPart editor = page.openEditor(editorInfo.editorInput, editorInfo.editorID, true);
+				IEditorPart editor = page.openEditor(editorInfo.editorInput, editorInfo.editorID, true,
+						IWorkbenchPage.MATCH_ID | IWorkbenchPage.MATCH_INPUT);
 				if (location == null) {
 					if (editor instanceof INavigationLocationProvider) {
 						location = ((INavigationLocationProvider) editor).createEmptyNavigationLocation();
@@ -76,6 +76,7 @@ public class NavigationHistoryEntry {
 				if (location != null) {
 					if (locationMemento != null) {
 						location.setInput(editorInfo.editorInput);
+						location.setId(editorInfo.editorID);
 						location.restoreState(locationMemento);
 						locationMemento = null;
 					}
@@ -127,7 +128,7 @@ public class NavigationHistoryEntry {
 	/**
 	 * Saves the state of this entry and its location.
 	 */
-	void saveState(IMemento mem, ArrayList<NavigationHistoryEntry> entries) {
+	final void saveState(IMemento mem) {
 		mem.putString(IWorkbenchConstants.TAG_HISTORY_LABEL, getHistoryText());
 		if (locationMemento != null) {
 			IMemento childMem = mem.createChild(IWorkbenchConstants.TAG_POSITION);

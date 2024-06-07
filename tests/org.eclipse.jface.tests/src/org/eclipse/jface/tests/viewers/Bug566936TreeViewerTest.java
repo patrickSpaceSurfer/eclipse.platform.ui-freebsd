@@ -36,7 +36,6 @@ import org.eclipse.swt.widgets.Tree;
 
 /**
  * Example for https://bugs.eclipse.org/bugs/show_bug.cgi?id=566936
- *
  */
 public class Bug566936TreeViewerTest {
 
@@ -102,7 +101,6 @@ public class Bug566936TreeViewerTest {
 			return "Column " + tree.getColumnOrder()[columnIndex] + " => " + element;
 		}
 
-		@SuppressWarnings("rawtypes")
 		@Override
 		public Object[] getElements(Object inputElement) {
 			if (inputElement instanceof List list) {
@@ -190,7 +188,7 @@ public class Bug566936TreeViewerTest {
 		viewerColumn.setLabelProvider(new MyColumnLabelProvider(v.getTree(), columnIndex));
 	}
 
-	private List<MyModel> createModel() {
+	private static List<MyModel> createModel() {
 		List<MyModel> elements = new ArrayList<>();
 
 		for (int i = 0; i < 10; i++) {
@@ -199,9 +197,6 @@ public class Bug566936TreeViewerTest {
 		return elements;
 	}
 
-	/**
-	 * @param args
-	 */
 	public static void main(String[] args) {
 		Display display = new Display();
 

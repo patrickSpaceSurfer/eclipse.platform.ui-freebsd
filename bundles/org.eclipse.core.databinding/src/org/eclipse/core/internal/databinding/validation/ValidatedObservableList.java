@@ -39,7 +39,6 @@ import org.eclipse.core.runtime.IStatus;
  * @param <E>
  *            The element type of the list.
  * @since 3.3
- *
  */
 public class ValidatedObservableList<E> extends ObservableList<E> {
 	private IObservableList<E> target;
@@ -98,10 +97,6 @@ public class ValidatedObservableList<E> extends ObservableList<E> {
 		}
 	};
 
-	/**
-	 * @param target
-	 * @param validationStatus
-	 */
 	public ValidatedObservableList(final IObservableList<E> target, final IObservableValue<IStatus> validationStatus) {
 		super(target.getRealm(), new ArrayList<>(target), target.getElementType());
 		Assert.isNotNull(validationStatus,
@@ -214,7 +209,7 @@ public class ValidatedObservableList<E> extends ObservableList<E> {
 	public Iterator<E> iterator() {
 		getterCalled();
 		final ListIterator<E> wrappedIterator = wrappedList.listIterator();
-		return new Iterator<E>() {
+		return new Iterator<>() {
 			E last = null;
 
 			@Override
@@ -247,7 +242,7 @@ public class ValidatedObservableList<E> extends ObservableList<E> {
 	public ListIterator<E> listIterator(int index) {
 		getterCalled();
 		final ListIterator<E> wrappedIterator = wrappedList.listIterator(index);
-		return new ListIterator<E>() {
+		return new ListIterator<>() {
 			int lastIndex = -1;
 			E last = null;
 

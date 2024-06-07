@@ -34,7 +34,6 @@ import org.eclipse.core.databinding.observable.IDiff;
  * @param <V>
  *            the type of mapped values
  * @since 1.1
- *
  */
 public abstract class MapDiff<K, V> implements IDiff {
 	/**
@@ -158,7 +157,7 @@ public abstract class MapDiff<K, V> implements IDiff {
 
 		@Override
 		public Iterator<Map.Entry<K, V>> iterator() {
-			return new Iterator<Map.Entry<K, V>>() {
+			return new Iterator<>() {
 				Iterator<Map.Entry<K, V>> origEntries = map.entrySet().iterator();
 				Iterator<? extends K> addedKeys = diff.getAddedKeys().iterator();
 

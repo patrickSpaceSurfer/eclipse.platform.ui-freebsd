@@ -34,7 +34,6 @@ import org.eclipse.core.runtime.IStatus;
 
 /**
  * @since 1.0
- *
  */
 public class ValidationStatusMap extends ObservableMap<Binding, IStatus> {
 
@@ -48,7 +47,6 @@ public class ValidationStatusMap extends ObservableMap<Binding, IStatus> {
 
 	/**
 	 * @param realm    the realm to use; not <code>null</code>
-	 * @param bindings
 	 */
 	public ValidationStatusMap(Realm realm, WritableList<Binding> bindings) {
 		super(realm, new HashMap<>());
@@ -77,7 +75,7 @@ public class ValidationStatusMap extends ObservableMap<Binding, IStatus> {
 		removeElementChangeListener();
 		final Map<Binding, IStatus> oldMap = wrappedMap;
 		// lazy computation of diff
-		MapDiff<Binding, IStatus> mapDiff = new MapDiff<Binding, IStatus>() {
+		MapDiff<Binding, IStatus> mapDiff = new MapDiff<>() {
 			private MapDiff<Binding, IStatus> cachedDiff = null;
 
 			private void ensureCached() {

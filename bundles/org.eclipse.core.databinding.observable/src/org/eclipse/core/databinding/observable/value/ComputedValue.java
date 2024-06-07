@@ -106,7 +106,7 @@ public abstract class ComputedValue<T> extends AbstractObservableValue<T> {
 	 */
 	public static <T> IObservableValue<T> create(Supplier<T> supplier) {
 		Objects.requireNonNull(supplier);
-		return new ComputedValue<T>() {
+		return new ComputedValue<>() {
 			@Override
 			protected T calculate() {
 				return supplier.get();
@@ -114,9 +114,6 @@ public abstract class ComputedValue<T> extends AbstractObservableValue<T> {
 		};
 	}
 
-	/**
-	 *
-	 */
 	public ComputedValue() {
 		this(Realm.getDefault(), null);
 	}
@@ -163,7 +160,6 @@ public abstract class ComputedValue<T> extends AbstractObservableValue<T> {
 	 * <p>
 	 * The IChangeListener is attached to every dependency.
 	 * </p>
-	 *
 	 */
 	private class PrivateInterface implements Runnable, IChangeListener,
 			IStaleListener {
@@ -253,9 +249,6 @@ public abstract class ComputedValue<T> extends AbstractObservableValue<T> {
 		}
 	}
 
-	/**
-	 *
-	 */
 	private void stopListening() {
 		// Stop listening for dependency changes.
 		if (dependencies != null) {

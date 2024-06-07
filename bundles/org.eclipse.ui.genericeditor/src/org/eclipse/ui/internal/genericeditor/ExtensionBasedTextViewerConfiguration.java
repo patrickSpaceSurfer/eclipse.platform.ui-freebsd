@@ -19,6 +19,9 @@
  *******************************************************************************/
 package org.eclipse.ui.internal.genericeditor;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -34,6 +37,8 @@ import java.util.stream.Collectors;
 
 import org.eclipse.core.filebuffers.FileBuffers;
 import org.eclipse.core.filebuffers.ITextFileBuffer;
+import org.eclipse.core.resources.IStorage;
+import org.eclipse.core.runtime.Adapters;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.IPath;
@@ -72,6 +77,7 @@ import org.eclipse.jface.text.reconciler.IReconcilingStrategy;
 import org.eclipse.jface.text.reconciler.Reconciler;
 import org.eclipse.jface.text.source.ISourceViewer;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.editors.text.TextSourceViewerConfiguration;
 import org.eclipse.ui.internal.editors.text.EditorsPlugin;
 import org.eclipse.ui.internal.genericeditor.folding.DefaultFoldingReconciler;
@@ -94,7 +100,7 @@ public final class ExtensionBasedTextViewerConfiguration extends TextSourceViewe
 	private ITextEditor editor;
 	private Set<IContentType> resolvedContentTypes;
 	private Set<IContentType> fallbackContentTypes = Set.of();
-	private IDocument document;
+	private IDocument watchedDocument;
 
 	private GenericEditorContentAssistant contentAssistant;
 
@@ -108,12 +114,12 @@ public final class ExtensionBasedTextViewerConfiguration extends TextSourceViewe
 		this.editor = editor;
 	}
 
-	public Set<IContentType> getContentTypes(IDocument document) {
+	public Set<IContentType> getContentTypes(IDocument documentParam) {
 		if (this.resolvedContentTypes != null) {
 			return this.resolvedContentTypes;
 		}
 		this.resolvedContentTypes = new LinkedHashSet<>();
-		ITextFileBuffer buffer = getCurrentBuffer(document);
+		ITextFileBuffer buffer = getCurrentBuffer(documentParam);
 		if (buffer != null) {
 			try {
 				IContentType contentType = buffer.getContentType();
@@ -125,7 +131,7 @@ public final class ExtensionBasedTextViewerConfiguration extends TextSourceViewe
 						.log(new Status(IStatus.ERROR, GenericEditorPlugin.BUNDLE_ID, ex.getMessage(), ex));
 			}
 		}
-		String fileName = getCurrentFileName(document);
+		String fileName = getCurrentFileName(documentParam);
 		if (fileName != null) {
 			Queue<IContentType> types = new LinkedList<>(
 					Arrays.asList(Platform.getContentTypeManager().findContentTypesFor(fileName)));
@@ -138,7 +144,27 @@ public final class ExtensionBasedTextViewerConfiguration extends TextSourceViewe
 				}
 			}
 		}
-		return this.resolvedContentTypes.isEmpty() ? fallbackContentTypes : resolvedContentTypes;
+		// Try to guess content type based on the content itself, if we don't
+		// have neither a resource, nor file name and no fallback contentTypes
+		if (documentParam != null && this.resolvedContentTypes.isEmpty() && this.fallbackContentTypes.isEmpty()) {
+			String content = documentParam.get();
+			if (content != null && !content.isBlank()) {
+				try (InputStream is = new ByteArrayInputStream(content.getBytes())) {
+					IContentType type = Platform.getContentTypeManager().findContentTypeFor(is, null);
+					while (type != null) {
+						this.resolvedContentTypes.add(type);
+						type = type.getBaseType();
+					}
+				} catch (IOException e) {
+					// silently ignore
+				}
+			}
+		}
+
+		if (this.resolvedContentTypes.isEmpty()) {
+			this.resolvedContentTypes.addAll(this.fallbackContentTypes);
+		}
+		return this.resolvedContentTypes;
 	}
 
 	private static ITextFileBuffer getCurrentBuffer(IDocument document) {
@@ -148,13 +174,14 @@ public final class ExtensionBasedTextViewerConfiguration extends TextSourceViewe
 		return null;
 	}
 
-	private String getCurrentFileName(IDocument document) {
+	private String getCurrentFileName(IDocument documentParam) {
 		String fileName = null;
 		if (this.editor != null) {
-			fileName = editor.getEditorInput().getName();
+			IEditorInput editorInput = editor.getEditorInput();
+			fileName = Adapters.of(editorInput, IStorage.class).map(IStorage::getName).orElseGet(editorInput::getName);
 		}
 		if (fileName == null) {
-			ITextFileBuffer buffer = getCurrentBuffer(document);
+			ITextFileBuffer buffer = getCurrentBuffer(documentParam);
 			if (buffer != null) {
 				IPath path = buffer.getLocation();
 				if (path != null) {
@@ -187,8 +214,8 @@ public final class ExtensionBasedTextViewerConfiguration extends TextSourceViewe
 		Set<IContentType> types = getContentTypes(sourceViewer.getDocument());
 		contentAssistant = new GenericEditorContentAssistant(contentAssistProcessorTracker,
 				registry.getContentAssistProcessors(sourceViewer, editor, types), types, fPreferenceStore);
-		if (this.document != null) {
-			associateTokenContentTypes(this.document);
+		if (this.watchedDocument != null) {
+			associateTokenContentTypes(this.watchedDocument);
 		}
 		watchDocument(sourceViewer.getDocument());
 		return contentAssistant;
@@ -206,29 +233,29 @@ public final class ExtensionBasedTextViewerConfiguration extends TextSourceViewe
 	}
 
 	void watchDocument(IDocument document) {
-		if (this.document == document) {
+		if (this.watchedDocument == document) {
 			return;
 		}
-		if (this.document != null) {
-			this.document.removeDocumentPartitioningListener(this);
+		if (this.watchedDocument != null) {
+			this.watchedDocument.removeDocumentPartitioningListener(this);
 		}
 		if (document != null) {
-			this.document = document;
+			this.watchedDocument = document;
 			associateTokenContentTypes(document);
 			document.addDocumentPartitioningListener(this);
 		}
 	}
 
 	@Override
-	public void documentPartitioningChanged(IDocument document) {
-		associateTokenContentTypes(document);
+	public void documentPartitioningChanged(IDocument documentParam) {
+		associateTokenContentTypes(documentParam);
 	}
 
-	private void associateTokenContentTypes(IDocument document) {
+	private void associateTokenContentTypes(IDocument documentParam) {
 		if (contentAssistant == null) {
 			return;
 		}
-		contentAssistant.updateTokens(document);
+		contentAssistant.updateTokens(documentParam);
 	}
 
 	@Override
@@ -272,9 +299,9 @@ public final class ExtensionBasedTextViewerConfiguration extends TextSourceViewe
 				foldingReconcilingStrategies, getContentTypes(sourceViewer.getDocument()));
 		if (!foldingReconcilers.isEmpty()) {
 			reconcilers.addAll(foldingReconcilers);
+		} else if (foldingReconcilingStrategies.isEmpty()) {
+			reconcilers.add(new DefaultFoldingReconciler());
 		}
-		// add default reconciler:
-		reconcilers.add(new DefaultFoldingReconciler());
 
 		reconcilingStrategies.addAll(foldingReconcilingStrategies);
 
@@ -317,12 +344,17 @@ public final class ExtensionBasedTextViewerConfiguration extends TextSourceViewe
 				editor, getContentTypes(sourceViewer.getDocument()));
 
 		InformationPresenter presenter = new InformationPresenter(new CompositeInformationControlCreator(hovers));
-		// By default the InformationPresented is set to take the focus when visible,
-		// which makes the Browser to overtake all the focus/mouse etc. control over the
+		// By default the InformationPresented is set to take the focus when
+		// visible,
+		// which makes the Browser to overtake all the focus/mouse etc. control
+		// over the
 		// 'org.eclipse.jface.text.information.InformationPresenter.Closer`.
-		// As we want to make t possible to close the information presenter by clicking
-		// outside of the information control or resizing the editor etc. - we need to
-		// disable such focus overtake by calling `takesFocusWhenVisible(false)` on the
+		// As we want to make t possible to close the information presenter by
+		// clicking
+		// outside of the information control or resizing the editor etc. - we
+		// need to
+		// disable such focus overtake by calling `takesFocusWhenVisible(false)`
+		// on the
 		// presenter.
 		//
 		presenter.takesFocusWhenVisible(false);
@@ -405,7 +437,7 @@ public final class ExtensionBasedTextViewerConfiguration extends TextSourceViewe
 							@Override
 							protected IInformationControl doCreateInformationControl(Shell parent) {
 								return new DefaultInformationControl(parent);
-							};
+							}
 						};
 			} else {
 				return new CompositeInformationControlCreator(new ArrayList<>(this.currentHovers.keySet()));
@@ -414,10 +446,8 @@ public final class ExtensionBasedTextViewerConfiguration extends TextSourceViewe
 	}
 
 	/**
-	 * Set content-types that will be considered is no content-type can be deduced
-	 * from the document (eg document is not backed by a FileBuffer)
-	 * 
-	 * @param contentTypes
+	 * Set content-types that will be considered is no content-type can be
+	 * deduced from the document (eg document is not backed by a FileBuffer)
 	 */
 	public void setFallbackContentTypes(Set<IContentType> contentTypes) {
 		this.fallbackContentTypes = (contentTypes == null ? Set.of() : contentTypes);

@@ -13,6 +13,7 @@
  *******************************************************************************/
 package org.eclipse.ui.forms.examples.internal.rcp;
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
 import org.eclipse.jface.viewers.ITableLabelProvider;
 import org.eclipse.jface.viewers.LabelProvider;
@@ -36,18 +37,11 @@ import org.eclipse.ui.forms.examples.internal.ExamplesPlugin;
 import org.eclipse.ui.forms.widgets.FormToolkit;
 import org.eclipse.ui.forms.widgets.ScrolledForm;
 import org.eclipse.ui.forms.widgets.Section;
-/**
- *
- */
 public class ScrolledPropertiesBlock extends MasterDetailsBlock {
 	private final FormPage page;
 	public ScrolledPropertiesBlock(FormPage page) {
 		this.page = page;
 	}
-	/**
-	 * @param id
-	 * @param title
-	 */
 	class MasterContentProvider implements IStructuredContentProvider {
 		@Override
 		public Object[] getElements(Object inputElement) {
@@ -124,7 +118,7 @@ public class ScrolledPropertiesBlock extends MasterDetailsBlock {
 	@Override
 	protected void createToolBarActions(IManagedForm managedForm) {
 		final ScrolledForm form = managedForm.getForm();
-		Action haction = new Action("hor", Action.AS_RADIO_BUTTON) {
+		Action haction = new Action("hor", IAction.AS_RADIO_BUTTON) {
 			@Override
 			public void run() {
 				sashForm.setOrientation(SWT.HORIZONTAL);
@@ -136,7 +130,7 @@ public class ScrolledPropertiesBlock extends MasterDetailsBlock {
 		haction.setImageDescriptor(ExamplesPlugin.getDefault()
 				.getImageRegistry()
 				.getDescriptor(ExamplesPlugin.IMG_HORIZONTAL));
-		Action vaction = new Action("ver", Action.AS_RADIO_BUTTON) {
+		Action vaction = new Action("ver", IAction.AS_RADIO_BUTTON) {
 			@Override
 			public void run() {
 				sashForm.setOrientation(SWT.VERTICAL);

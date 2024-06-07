@@ -16,6 +16,7 @@ package org.eclipse.ui.forms.examples.internal.rcp;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.ControlContribution;
+import org.eclipse.jface.action.IAction;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
@@ -35,9 +36,6 @@ import org.eclipse.ui.forms.widgets.ScrolledForm;
  * A form editor that has several pages but only one stable header.
  */
 public class SingleHeaderEditor extends SharedHeaderFormEditor {
-	/**
-	 *
-	 */
 	public SingleHeaderEditor() {
 	}
 
@@ -85,7 +83,7 @@ public class SingleHeaderEditor extends SharedHeaderFormEditor {
 	}
 
 	private void addToolBar(Form form) {
-		Action haction = new Action("hor", Action.AS_RADIO_BUTTON) {
+		Action haction = new Action("hor", IAction.AS_RADIO_BUTTON) {
 			@Override
 			public void run() {
 			}
@@ -95,7 +93,7 @@ public class SingleHeaderEditor extends SharedHeaderFormEditor {
 		haction.setImageDescriptor(ExamplesPlugin.getDefault()
 				.getImageRegistry()
 				.getDescriptor(ExamplesPlugin.IMG_HORIZONTAL));
-		Action vaction = new Action("ver", Action.AS_RADIO_BUTTON) {
+		Action vaction = new Action("ver", IAction.AS_RADIO_BUTTON) {
 			@Override
 			public void run() {
 			}

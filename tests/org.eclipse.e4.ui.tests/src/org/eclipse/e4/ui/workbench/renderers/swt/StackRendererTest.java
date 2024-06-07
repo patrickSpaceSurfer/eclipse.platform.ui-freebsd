@@ -33,10 +33,12 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import org.eclipse.e4.core.contexts.IEclipseContext;
+import org.eclipse.e4.ui.internal.workbench.PartStackUtil;
 import org.eclipse.e4.ui.internal.workbench.swt.CSSConstants;
 import org.eclipse.e4.ui.model.application.MApplication;
 import org.eclipse.e4.ui.model.application.descriptor.basic.MPartDescriptor;
 import org.eclipse.e4.ui.model.application.ui.advanced.MPerspective;
+import org.eclipse.e4.ui.model.application.ui.advanced.MPerspectiveStack;
 import org.eclipse.e4.ui.model.application.ui.advanced.MPlaceholder;
 import org.eclipse.e4.ui.model.application.ui.basic.MPart;
 import org.eclipse.e4.ui.model.application.ui.basic.MPartStack;
@@ -410,7 +412,7 @@ public class StackRendererTest {
 
 	@Test
 	public void testOnboardingRenderedWithCorrectSizeForEditorStack() {
-		partStack.getTags().add("EditorStack");
+		PartStackUtil.makeEditorStack(partStack);
 
 		contextRule.createAndRunWorkbench(window);
 
@@ -443,28 +445,53 @@ public class StackRendererTest {
 
 	@Test
 	public void testOnboardingIsFilled() {
+		MPerspective perspective = createPerspective();
+		PartStackUtil.makeEditorStack(partStack);
+
+		contextRule.createAndRunWorkbench(window);
+		switchToPerspective(perspective);
+
+		CTabFolder tabFolder = (CTabFolder) partStack.getWidget();
+		assertFilledOnboardingInformation(tabFolder);
+	}
+
+	private MPerspective createPerspective() {
 		MPerspective perspective = ems.createModelElement(MPerspective.class);
 		perspective.getTags().add("persp.editorOnboardingText:Onboarding text");
 		perspective.getTags().add("persp.editorOnboardingImageUri:" + PART_ICON);
 		perspective.getTags().add("persp.editorOnboardingCommand:Find Actions$$$STRG+3");
 
-		partStack.getTags().add("EditorStack");
+		// "connect" the perspective with the application more or less like in
+		// productive environment
+		MPerspectiveStack perspectiveStack = ems.createModelElement(MPerspectiveStack.class);
+		perspectiveStack.getChildren().add(perspective);
+		window.getChildren().add(perspectiveStack);
+		MPlaceholder placeholder = ems.createModelElement(MPlaceholder.class);
+		placeholder.setRef(partStack);
+		perspective.getChildren().add(placeholder);
+		return perspective;
+	}
 
-		contextRule.createAndRunWorkbench(window);
-
+	private void switchToPerspective(MPerspective perspective) {
 		HashMap<String, Object> params = new HashMap<>();
 		params.put(UIEvents.EventTags.ELEMENT, perspective);
-
 		context.get(EventBroker.class).send(UIEvents.UILifeCycle.PERSPECTIVE_SWITCHED, params);
+	}
 
-		Composite uiContainer = (Composite) ((StackRenderer) partStack.getRenderer()).getUIContainer(partStack);
-		CTabFolder tabFolder = (CTabFolder) ((Composite) uiContainer.getChildren()[0]).getChildren()[0];
+	private void assertFilledOnboardingInformation(CTabFolder tabFolder) {
 		assertNotNull(tabFolder.getChildren());
-		assertEquals(3, tabFolder.getChildren().length);
-
-		Composite outerOnboardingComposite = (Composite) tabFolder.getChildren()[2];
-		Composite innerOnboardingComposite = (Composite) outerOnboardingComposite.getChildren()[0];
-		assertEquals(4, innerOnboardingComposite.getChildren().length);
+		Composite innerOnboardingComposite = null;
+		for (Control child : tabFolder.getChildren()) {
+			if (child instanceof Composite outerComposite) {
+				if (outerComposite.getChildren().length > 0 && outerComposite.getChildren()[0] instanceof Composite innerComposite) {
+					if (innerComposite.getChildren().length == 4) {
+						innerOnboardingComposite = innerComposite;
+						break;
+					}
+				}
+			}
+		}
+		assertNotNull(innerOnboardingComposite);
 		assertNotNull(((Label) innerOnboardingComposite.getChildren()[0]).getImage());
 		assertEquals("Onboarding text", ((Label) innerOnboardingComposite.getChildren()[1]).getText());
 		assertEquals("Find Actions", ((Label) innerOnboardingComposite.getChildren()[2]).getText());
@@ -472,8 +499,29 @@ public class StackRendererTest {
 	}
 
 	@Test
+	public void testOnboardingIsFilledForEveryEditorStack() {
+		MPerspective perspective = createPerspective();
+		PartStackUtil.makeEditorStack(partStack);
+
+		contextRule.createAndRunWorkbench(window);
+
+		// Create second editor stack
+		MPartStack secondPartStack = ems.createModelElement(MPartStack.class);
+		PartStackUtil.makeEditorStack(secondPartStack);
+		MPlaceholder placeholder = ems.createModelElement(MPlaceholder.class);
+		placeholder.setRef(secondPartStack);
+		perspective.getChildren().add(placeholder);
+		window.getChildren().add(secondPartStack);
+
+		switchToPerspective(perspective);
+
+		CTabFolder tabFolder = (CTabFolder) secondPartStack.getWidget();
+		assertFilledOnboardingInformation(tabFolder);
+	}
+
+	@Test
 	public void testOnboardingIsHiddenWhenEditorOpened() {
-		partStack.getTags().add("EditorStack");
+		PartStackUtil.makeEditorStack(partStack);
 
 		contextRule.createAndRunWorkbench(window);
 

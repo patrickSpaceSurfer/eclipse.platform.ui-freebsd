@@ -69,13 +69,15 @@ public class TestAdaptableWorkbenchAdapter extends LabelProvider implements
 	}
 
 	/**
-	 * Returns an image descriptor that is based on the given descriptor,
-	 * but decorated with additional information relating to the state
-	 * of the provided object.
+	 * Returns an image descriptor that is based on the given descriptor, but
+	 * decorated with additional information relating to the state of the provided
+	 * object.
 	 *
-	 * Subclasses may reimplement this method to decorate an object's
-	 * image.
-	 * @see org.eclipse.jface.resource.CompositeImage
+	 * Subclasses may reimplement this method to decorate an object's image.
+	 *
+	 * @param element unused
+	 *
+	 * @see org.eclipse.jface.resource.CompositeImageDescriptor
 	 */
 	protected ImageDescriptor decorateImage(ImageDescriptor input,
 			Object element) {
@@ -83,12 +85,12 @@ public class TestAdaptableWorkbenchAdapter extends LabelProvider implements
 	}
 
 	/**
-	 * Returns a label that is based on the given label,
-	 * but decorated with additional information relating to the state
-	 * of the provided object.
+	 * Returns a label that is based on the given label, but decorated with
+	 * additional information relating to the state of the provided object.
 	 *
-	 * Subclasses may implement this method to decorate an object's
-	 * label.
+	 * Subclasses may implement this method to decorate an object's label.
+	 *
+	 * @param element unused
 	 */
 	protected String decorateText(String input, Object element) {
 		return input;

@@ -206,43 +206,30 @@ class CompletionProposalPopup2 implements IContentAssistListener2 {
 		}
 
 		final StyledText styledText= fViewer.getTextWidget();
-		if (styledText != null && !styledText.isDisposed())
+		if (styledText != null && !styledText.isDisposed()) {
 			styledText.addKeyListener(fKeyListener);
+			fInvocationOffset= fViewer.getSelectedRange().x;
+			fComputedProposals= computeProposals(fInvocationOffset);
 
-//		BusyIndicator.showWhile(styledText.getDisplay(), new Runnable() {
-//			public void run() {
-
-				fInvocationOffset= fViewer.getSelectedRange().x;
-				// lazily compute proposals
-//				if (fComputedProposals == null)	fComputedProposals= computeProposals(fContentAssistant.getCompletionPosition());
-				fComputedProposals= computeProposals(fInvocationOffset);
-
-				int count= (fComputedProposals == null ? 0 : fComputedProposals.length);
-				if (count == 0) {
-
-					if (!autoActivated)
-						styledText.getDisplay().beep();
-
-				} else {
-
-					if (count == 1 && !autoActivated && fContentAssistant.isAutoInserting())
-
-						insertProposal(fComputedProposals[0], (char) 0, 0, fInvocationOffset);
-
-					else {
-
-						if (fLineDelimiter == null)
-							fLineDelimiter= styledText.getLineDelimiter();
-
-						createProposalSelector();
-						setProposals(fComputedProposals);
-						resizeProposalSelector(true);
-						displayProposals();
-					}
+			int count= (fComputedProposals == null ? 0 : fComputedProposals.length);
+			if (count == 0) {
+				if (!autoActivated) {
+					styledText.getDisplay().beep();
 				}
-//			}
-//		});
-
+			} else {
+				if (count == 1 && !autoActivated && fContentAssistant.isAutoInserting()) {
+					insertProposal(fComputedProposals[0], (char) 0, 0, fInvocationOffset);
+				} else {
+					if (fLineDelimiter == null) {
+						fLineDelimiter= styledText.getLineDelimiter();
+					}
+					createProposalSelector();
+					setProposals(fComputedProposals);
+					resizeProposalSelector(true);
+					displayProposals();
+				}
+			}
+		}
 		return getErrorMessage();
 	}
 
@@ -872,18 +859,14 @@ class CompletionProposalPopup2 implements IContentAssistListener2 {
 	private void filterProposals() {
 		++ fInvocationCounter;
 		Control control= fViewer.getTextWidget();
-		control.getDisplay().asyncExec(new Runnable() {
-			long fCounter= fInvocationCounter;
-			@Override
-			public void run() {
+		long fCounter= fInvocationCounter;
+		control.getDisplay().asyncExec(() -> {
+			if (fCounter != fInvocationCounter)
+				return;
+			if (fInvocationProcessedCounter == fInvocationCounter)
+				return;
 
-				if (fCounter != fInvocationCounter)
-					return;
-				if (fInvocationProcessedCounter == fInvocationCounter)
-					return;
-
-				doFilterProposals();
-			}
+			doFilterProposals();
 		});
 	}
 

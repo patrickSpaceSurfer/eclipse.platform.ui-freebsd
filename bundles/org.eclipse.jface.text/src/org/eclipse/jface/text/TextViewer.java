@@ -17,6 +17,7 @@
  *******************************************************************************/
 package org.eclipse.jface.text;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -73,6 +74,7 @@ import org.eclipse.jface.internal.text.SelectionProcessor;
 import org.eclipse.jface.internal.text.StickyHoverManager;
 import org.eclipse.jface.util.Geometry;
 import org.eclipse.jface.util.OpenStrategy;
+import org.eclipse.jface.util.Throttler;
 import org.eclipse.jface.viewers.IPostSelectionProvider;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
@@ -877,29 +879,40 @@ public class TextViewer extends Viewer implements
 		@Override
 		public Point getLineSelection() {
 			Point point= TextViewer.this.getSelectedRange();
+			int originalSelectionBeginIndex= point.x;
+			int originalSelectionLength= point.y;
 
 			try {
 				IDocument document= TextViewer.this.getDocument();
 
-				// beginning of line
-				int line= document.getLineOfOffset(point.x);
-				int offset= document.getLineOffset(line);
+				int firstSelectedLineNumber= document.getLineOfOffset(originalSelectionBeginIndex);
+				int firstSelectedLineBeginIndex= document.getLineOffset(firstSelectedLineNumber);
 
-				// end of line
-				IRegion lastLineInfo= document.getLineInformationOfOffset(point.x + point.y);
-				int lastLine= document.getLineOfOffset(point.x + point.y);
-				int length;
-				if (lastLineInfo.getOffset() == point.x + point.y && lastLine > 0)
-					length= document.getLineOffset(lastLine - 1) + document.getLineLength(lastLine - 1)	- offset;
-				else
-					length= lastLineInfo.getOffset() + lastLineInfo.getLength() - offset;
+				int lastSelectedLineNumber= calculateLastSelectedLineNumber(document, originalSelectionBeginIndex, originalSelectionLength);
+				int lastSelectedLineEndIndex= document.getLineOffset(lastSelectedLineNumber) + document.getLineLength(lastSelectedLineNumber);
+				int lineSelectionLength= lastSelectedLineEndIndex - firstSelectedLineBeginIndex;
 
-				return new Point(offset, length);
-
+				return new Point(firstSelectedLineBeginIndex, lineSelectionLength);
 			} catch (BadLocationException e) {
 				// should not happen
-				return new Point(point.x, 0);
+				return new Point(originalSelectionBeginIndex, 0);
 			}
+		}
+
+		/**
+		 * Returns the last line in the given selection range. If the selection ends at the
+		 * beginning of a new line and has a length > 0 (i.e., starts in a preceding line), the line
+		 * at which the selection ends is excluded.
+		 */
+		private static int calculateLastSelectedLineNumber(IDocument document, int selectionBeginIndex, int selectionLength) throws BadLocationException {
+			int selectionEndIndex= selectionBeginIndex + selectionLength;
+			int lastSelectedLineNumber= document.getLineOfOffset(selectionEndIndex);
+			int lastSelectedLineBeginIndex= document.getLineOffset(lastSelectedLineNumber);
+			boolean selectionEndsAtBeginningOfNewLine= lastSelectedLineBeginIndex == selectionEndIndex;
+			if (selectionEndsAtBeginningOfNewLine && selectionLength > 0) {
+				lastSelectedLineNumber--;
+			}
+			return lastSelectedLineNumber;
 		}
 
 		@Override
@@ -1082,7 +1095,7 @@ public class TextViewer extends Viewer implements
 	private final class ViewerState {
 		/** The position tracking the selection. */
 		private Position[] fSelections;
-		/** <code>true</code> if {@link #fSelection} was originally backwards. */
+		/** <code>true</code> if {@link #fSelections} was originally backwards. */
 		private boolean fReverseSelection;
 		/** <code>true</code> if the selection has been updated while in redraw(off) mode. */
 		private boolean fSelectionSet;
@@ -1091,7 +1104,7 @@ public class TextViewer extends Viewer implements
 		/** The pixel offset of the stable line measured from the client area. */
 		private int fStablePixel;
 
-		/** The position updater for {@link #fSelection} and {@link #fStableLine}. */
+		/** The position updater for {@link #fSelections} and {@link #fStableLine}. */
 		private IPositionUpdater fUpdater;
 		/** The document that the position updater and the positions are registered with. */
 		private IDocument fUpdaterDocument;
@@ -1456,6 +1469,7 @@ public class TextViewer extends Viewer implements
 
 	/** The viewer's text widget */
 	private StyledText fTextWidget;
+	private Throttler throttledPostSelection;
 	/** The viewer's input document */
 	private IDocument fDocument;
 	/** The viewer's visible document */
@@ -1537,11 +1551,6 @@ public class TextViewer extends Viewer implements
 	 * @since 3.0
 	 */
 	private List<ISelectionChangedListener> fPostSelectionChangedListeners;
-	/**
-	 * Queued post selection changed events count.
-	 * @since 3.0
-	 */
-	private final int[] fNumberOfPostSelectionChangedEvents= new int[1];
 	/**
 	 * Last selection range sent to post selection change listeners.
 	 * @since 3.0
@@ -1716,7 +1725,7 @@ public class TextViewer extends Viewer implements
 	 * @param styles the SWT style bits for the viewer's control
 	 */
 	protected void createControl(Composite parent, int styles) {
-
+		throttledPostSelection= new Throttler(parent.getDisplay(), Duration.ofMillis(getEmptySelectionChangedEventDelay()), this::postSelectionChanged);
 		fTextWidget= createTextWidget(parent, styles);
 
 		// Support scroll page upon MOD1+MouseWheel
@@ -2030,21 +2039,23 @@ public class TextViewer extends Viewer implements
 
 	@Override
 	public void setIndentPrefixes(String[] indentPrefixes, String contentType) {
-
 		int i= -1;
-		boolean ok= (indentPrefixes != null);
-		while (ok &&  ++i < indentPrefixes.length)
-			ok= (indentPrefixes[i] != null);
+		boolean ok= false;
+		if (indentPrefixes != null) {
+			ok= true;
+			while (ok && ++i < indentPrefixes.length) {
+				ok= (indentPrefixes[i] != null);
+			}
+		}
 
 		if (ok) {
-
-			if (fIndentChars == null)
+			if (fIndentChars == null) {
 				fIndentChars= new HashMap<>();
-
+			}
 			fIndentChars.put(contentType, indentPrefixes);
-
-		} else if (fIndentChars != null)
+		} else if (fIndentChars != null) {
 			fIndentChars.remove(contentType);
+		}
 	}
 
 	@Override
@@ -2608,29 +2619,25 @@ public class TextViewer extends Viewer implements
 		Display display= getDisplay();
 		if (display == null)
 			return;
-
-		fNumberOfPostSelectionChangedEvents[0]++;
+		// no synchronization or volatile access needed
+		// because postSelectionChanged() will also run in the same (UI) thread, just later:
 		fFireEqualPostSelectionChange|= fireEqualSelection;
-		display.timerExec(getEmptySelectionChangedEventDelay(), new Runnable() {
-			final int id= fNumberOfPostSelectionChangedEvents[0];
-			@Override
-			public void run() {
-				if (id == fNumberOfPostSelectionChangedEvents[0]) {
-					// Check again because this is executed after the delay
-					if (getDisplay() != null)  {
-						Point selection= fTextWidget.getSelectionRange();
-						if (selection != null) {
-							IRegion r= widgetRange2ModelRange(new Region(selection.x, selection.y));
-							if (fFireEqualPostSelectionChange || (r != null && !r.equals(fLastSentPostSelectionChange)) || r == null)  {
-								fLastSentPostSelectionChange= r;
-								fFireEqualPostSelectionChange= false;
-								firePostSelectionChanged(selection.x, selection.y);
-							}
-						}
-					}
-				}
+		throttledPostSelection.throttledAsyncExec();
+	}
+
+	private void postSelectionChanged() {
+		if (fTextWidget == null || fTextWidget.isDisposed()) {
+			return;
+		}
+		Point selection= fTextWidget.getSelectionRange();
+		if (selection != null) {
+			IRegion r= widgetRange2ModelRange(new Region(selection.x, selection.y));
+			if (fFireEqualPostSelectionChange || (r != null && !r.equals(fLastSentPostSelectionChange)) || r == null) {
+				fLastSentPostSelectionChange= r;
+				fFireEqualPostSelectionChange= false;
+				firePostSelectionChanged(selection.x, selection.y);
 			}
-		});
+		}
 	}
 
 	/**
@@ -2784,8 +2791,7 @@ public class TextViewer extends Viewer implements
 				event= ((SlaveDocumentEvent) event).getMasterEvent();
 
 			TextEvent e= new TextEvent(cmd.start, cmd.length, cmd.text, cmd.preservedText, event, redraws());
-			for (int i= 0; i < textListeners.size(); i++) {
-				ITextListener l= textListeners.get(i);
+			for (ITextListener l : textListeners) {
 				l.textChanged(e);
 			}
 		}
@@ -4578,7 +4584,6 @@ public class TextViewer extends Viewer implements
 	 * @param wholeWord <code>true</code> if matches must be whole words, <code>false</code> otherwise
 	 * @param regExSearch <code>true</code> if <code>findString</code> is a regular expression, <code>false</code> otherwise
 	 * @return the model offset of the first match
-	 *
 	 */
 	protected int findAndSelect(int startPosition, String findString, boolean forwardSearch, boolean caseSensitive, boolean wholeWord, boolean regExSearch) {
 		if (fTextWidget == null)

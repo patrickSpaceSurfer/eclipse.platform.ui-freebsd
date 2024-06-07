@@ -62,7 +62,6 @@ import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.dialogs.FileSystemElement;
 import org.eclipse.ui.dialogs.WizardResourceImportPage;
@@ -154,20 +153,17 @@ public class WizardFileSystemResourceImportPage1 extends WizardResourceImportPag
 	/**
 	 *	Creates an instance of this class
 	 */
-	protected WizardFileSystemResourceImportPage1(String name,
-			IWorkbench aWorkbench, IStructuredSelection selection) {
+	protected WizardFileSystemResourceImportPage1(String name, IStructuredSelection selection) {
 		super(name, selection);
 	}
 
 	/**
 	 *	Creates an instance of this class
 	 *
-	 * @param aWorkbench IWorkbench
 	 * @param selection IStructuredSelection
 	 */
-	public WizardFileSystemResourceImportPage1(IWorkbench aWorkbench,
-			IStructuredSelection selection) {
-		this("fileSystemImportPage1", aWorkbench, selection);//$NON-NLS-1$
+	public WizardFileSystemResourceImportPage1(IStructuredSelection selection) {
+		this("fileSystemImportPage1", selection);//$NON-NLS-1$
 		setTitle(DataTransferMessages.DataTransfer_fileSystemTitle);
 		setDescription(DataTransferMessages.FileImport_importFileSystem);
 	}
@@ -325,17 +321,17 @@ public class WizardFileSystemResourceImportPage1 extends WizardResourceImportPag
 	}
 
 	private Composite createAdvancedSection(Composite parent) {
-		Composite linkedResourceComposite= new Composite(parent, SWT.NONE);
-		linkedResourceComposite.setFont(parent.getFont());
-		linkedResourceComposite.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		Composite compositeForSection= new Composite(parent, SWT.NONE);
+		compositeForSection.setFont(parent.getFont());
+		compositeForSection.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 		GridLayout layout= new GridLayout();
 		layout.marginHeight= 0;
 		layout.marginWidth= 0;
-		linkedResourceComposite.setLayout(layout);
+		compositeForSection.setLayout(layout);
 
 
 		// create linked resource check
-		createLinksInWorkspaceButton= new Button(linkedResourceComposite, SWT.CHECK);
+		createLinksInWorkspaceButton= new Button(compositeForSection, SWT.CHECK);
 		createLinksInWorkspaceButton.setFont(parent.getFont());
 		createLinksInWorkspaceButton.setText(DataTransferMessages.FileImport_createLinksInWorkspace);
 		createLinksInWorkspaceButton.setSelection(false);
@@ -347,12 +343,12 @@ public class WizardFileSystemResourceImportPage1 extends WizardResourceImportPag
 			}
 		});
 
-		Button tmp= new Button(linkedResourceComposite, SWT.CHECK);
+		Button tmp= new Button(compositeForSection, SWT.CHECK);
 		int indent = tmp.computeSize(SWT.DEFAULT, SWT.DEFAULT).x;
 		tmp.dispose();
 
 		// create virtual folders check
-		createVirtualFoldersButton= new Button(linkedResourceComposite, SWT.CHECK);
+		createVirtualFoldersButton= new Button(compositeForSection, SWT.CHECK);
 		createVirtualFoldersButton.setFont(parent.getFont());
 		createVirtualFoldersButton.setText(DataTransferMessages.FileImport_createVirtualFolders);
 		createVirtualFoldersButton.setToolTipText(DataTransferMessages.FileImport_createVirtualFoldersTooltip);
@@ -369,7 +365,7 @@ public class WizardFileSystemResourceImportPage1 extends WizardResourceImportPag
 		gridData.horizontalIndent = indent;
 		createVirtualFoldersButton.setLayoutData(gridData);
 
-		Composite relativeGroup= new Composite(linkedResourceComposite, 0);
+		Composite relativeGroup= new Composite(compositeForSection, 0);
 		gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
 		gridData.horizontalIndent = indent;
 		relativeGroup.setFont(parent.getFont());
@@ -411,7 +407,7 @@ public class WizardFileSystemResourceImportPage1 extends WizardResourceImportPag
 		updateWidgetEnablements();
 		relativePathVariableGroup.setSelection(true);
 
-		return linkedResourceComposite;
+		return compositeForSection;
 
 	}
 
@@ -651,8 +647,8 @@ public class WizardFileSystemResourceImportPage1 extends WizardResourceImportPag
 
 		saveWidgetValues();
 
-		Iterator resourcesEnum = getSelectedResources().iterator();
-		List fileSystemObjects = new ArrayList();
+		Iterator<?> resourcesEnum = getSelectedResources().iterator();
+		List<Object> fileSystemObjects = new ArrayList<>();
 		while (resourcesEnum.hasNext()) {
 			fileSystemObjects.add(((FileSystemElement) resourcesEnum.next())
 					.getFileSystemObject());
@@ -850,13 +846,13 @@ public class WizardFileSystemResourceImportPage1 extends WizardResourceImportPag
 	/**
 	 *  Import the resources with extensions as specified by the user
 	 */
-	protected boolean importResources(List fileSystemObjects) {
+	protected boolean importResources(List<Object> fileSystemObjects) {
 		ImportOperation operation;
 
 		boolean shouldImportTopLevelFoldersRecursively = selectionGroup.isEveryItemChecked() &&
 													!createTopLevelFolderCheckbox.getSelection() &&
 													(createLinksInWorkspaceButton != null && createLinksInWorkspaceButton.getSelection()) &&
-													(createVirtualFoldersButton != null && createVirtualFoldersButton.getSelection() == false);
+													(createVirtualFoldersButton != null && !createVirtualFoldersButton.getSelection());
 
 		File sourceDirectory = getSourceDirectory();
 		if (createTopLevelFolderCheckbox.getSelection() && sourceDirectory.getParentFile() != null)
@@ -922,7 +918,7 @@ public class WizardFileSystemResourceImportPage1 extends WizardResourceImportPag
 			return true;
 		}
 
-		Iterator itr = selectedTypes.iterator();
+		Iterator<Object> itr = selectedTypes.iterator();
 		while (itr.hasNext()) {
 			if (extension.equalsIgnoreCase((String) itr.next())) {
 				return true;
@@ -1110,7 +1106,7 @@ public class WizardFileSystemResourceImportPage1 extends WizardResourceImportPag
 	protected void setupSelectionsBasedOnSelectedTypes() {
 		ProgressMonitorDialog dialog = new ProgressMonitorJobsDialog(
 				getContainer().getShell());
-		final Map selectionMap = new Hashtable();
+		final Map<Object, List<Object>> selectionMap = new Hashtable<>();
 
 		final IElementFilter filter = new IElementFilter() {
 
@@ -1120,7 +1116,7 @@ public class WizardFileSystemResourceImportPage1 extends WizardResourceImportPag
 				if (files == null) {
 					throw new InterruptedException();
 				}
-				Iterator filesList = files.iterator();
+				Iterator<?> filesList = files.iterator();
 				while (filesList.hasNext()) {
 					if (monitor.isCanceled()) {
 						throw new InterruptedException();
@@ -1146,10 +1142,10 @@ public class WizardFileSystemResourceImportPage1 extends WizardResourceImportPag
 			private void checkFile(Object fileElement) {
 				MinimizedFileSystemElement file = (MinimizedFileSystemElement) fileElement;
 				if (isExportableExtension(file.getFileNameExtension())) {
-					List elements = new ArrayList();
+					List<Object> elements = new ArrayList<>();
 					FileSystemElement parent = file.getParent();
 					if (selectionMap.containsKey(parent)) {
-						elements = (List) selectionMap.get(parent);
+						elements = selectionMap.get(parent);
 					}
 					elements.add(file);
 					selectionMap.put(parent, elements);
@@ -1249,7 +1245,7 @@ public class WizardFileSystemResourceImportPage1 extends WizardResourceImportPag
 			return false;
 		}
 
-		List resourcesToExport = selectionGroup.getAllWhiteCheckedItems();
+		List<?> resourcesToExport = selectionGroup.getAllWhiteCheckedItems();
 		if (resourcesToExport.isEmpty()){
 			setMessage(null);
 			setErrorMessage(DataTransferMessages.FileImport_noneSelected);
@@ -1262,7 +1258,7 @@ public class WizardFileSystemResourceImportPage1 extends WizardResourceImportPag
 				setErrorMessage(DataTransferMessages.FileImport_cannotImportFilesUnderAVirtualFolder);
 				return false;
 			}
-			if (createLinksInWorkspaceButton == null || createLinksInWorkspaceButton.getSelection() == false) {
+			if (createLinksInWorkspaceButton == null || !createLinksInWorkspaceButton.getSelection()) {
 				setMessage(null);
 				setErrorMessage(DataTransferMessages.FileImport_haveToCreateLinksUnderAVirtualFolder);
 				return false;

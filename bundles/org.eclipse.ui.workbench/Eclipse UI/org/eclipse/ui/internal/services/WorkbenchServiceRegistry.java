@@ -49,9 +49,6 @@ import org.eclipse.ui.statushandlers.StatusManager;
  * @since 3.4
  */
 public class WorkbenchServiceRegistry implements IExtensionChangeHandler {
-	/**
-	 *
-	 */
 	private static final String WORKBENCH_LEVEL = "workbench"; //$NON-NLS-1$
 
 	private static final String EXT_ID_SERVICES = "org.eclipse.ui.services"; //$NON-NLS-1$
@@ -239,7 +236,7 @@ public class WorkbenchServiceRegistry implements IExtensionChangeHandler {
 				for (ServiceLocator locator : locators) {
 					ServiceLocator serviceLocator = locator;
 					if (!serviceLocator.isDisposed()) {
-						serviceLocator.unregisterServices(handle.serviceNames);
+						serviceLocator.unregisterServices();
 					}
 				}
 				handle.factory = null;

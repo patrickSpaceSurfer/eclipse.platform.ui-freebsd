@@ -155,7 +155,7 @@ public class ProgressServiceImpl implements IProgressService {
 	public void run(boolean fork, boolean cancelable,
 			IRunnableWithProgress runnable) throws InvocationTargetException,
 			InterruptedException {
-		if (fork == false || cancelable == false) {
+		if (!fork || !cancelable) {
 			// backward compatible code
 			final ProgressMonitorJobsDialog dialog = new ProgressMonitorJobsDialog(
 					null, this, progressManager, contentProviderFactory,
@@ -252,9 +252,6 @@ public class ProgressServiceImpl implements IProgressService {
 	/**
 	 * Show the busy cursor while the runnable is running. Schedule a job to
 	 * replace it with a progress dialog.
-	 *
-	 * @param dialogWaitRunnable
-	 * @param dialog
 	 */
 	private void busyCursorWhile(Runnable dialogWaitRunnable,
 			ProgressMonitorJobsDialog dialog) {

@@ -94,7 +94,7 @@ public class CocoaUIProcessor {
 
 	/**
 	 * Install the Cocoa window handlers. Sadly this has to be done here rather than
-	 * in a <tt>fragments.e4xmi</tt> as the project <tt>Application.e4xmi</tt> may
+	 * in a {@code fragments.e4xmi} as the project {@code Application.e4xmi} may
 	 * (and likely will) use different IDs.
 	 */
 	public void installWindowHandlers() {
@@ -170,7 +170,8 @@ public class CocoaUIProcessor {
 	/**
 	 * @param bindingContexts
 	 * @param bindingContextId
-	 * @return
+	 * @return Binding Context matching the input string
+	 *         <code>bindingContextId</code>, <code>null</code> if no match found
 	 */
 	private MBindingContext findBindingContext(List<MBindingContext> bindingContexts, String bindingContextId) {
 		for (MBindingContext bc : bindingContexts) {

@@ -42,7 +42,6 @@ import org.eclipse.ui.internal.ide.undo.UndoMessages;
  *
  * @noextend This class is not intended to be subclassed by clients.
  * @since 3.3
- *
  */
 public class MoveProjectOperation extends AbstractCopyOrMoveResourcesOperation {
 
@@ -120,7 +119,7 @@ public class MoveProjectOperation extends AbstractCopyOrMoveResourcesOperation {
 			throws CoreException {
 		projectLocation = moveProject(getProject(), projectLocation, monitor);
 		// nothing was overwritten
-		setResourceDescriptions(new IResourceSnapshot[0]);
+		setResourceDescriptions(new IResourceSnapshot<?>[0]);
 	}
 
 	@Override

@@ -19,11 +19,15 @@ package org.eclipse.e4.ui.workbench.renderers.swt;
 
 import java.lang.reflect.Field;
 import java.util.Objects;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences.IPreferenceChangeListener;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences.PreferenceChangeEvent;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.e4.ui.internal.css.swt.ICTabRendering;
+import org.eclipse.e4.ui.internal.workbench.PartStackUtil;
+import org.eclipse.e4.ui.internal.workbench.swt.AbstractPartRenderer;
+import org.eclipse.e4.ui.model.application.ui.MUIElement;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabFolderRenderer;
@@ -41,6 +45,11 @@ import org.eclipse.swt.graphics.Rectangle;
 public class CTabRendering extends CTabFolderRenderer implements ICTabRendering, IPreferenceChangeListener {
 
 	/**
+	 * The preference qualifier.
+	 */
+	private static final String PREF_QUALIFIER_ECLIPSE_E4_UI_WORKBENCH_RENDERERS_SWT = "org.eclipse.e4.ui.workbench.renderers.swt"; //$NON-NLS-1$
+
+	/**
 	 * A named preference for setting CTabFolder's to be rendered with rounded
 	 * corners
 	 * <p>
@@ -54,6 +63,35 @@ public class CTabRendering extends CTabFolderRenderer implements ICTabRendering,
 	 * Default value for "use round tabs" preference
 	 */
 	public static final boolean USE_ROUND_TABS_DEFAULT = false;
+	/**
+	 * A named preference for setting CTabFolder's to be rendered without icons in view areas
+	 * <p>
+	 * The default value for this preference is: <code>false</code> (render
+	 * CTabFolder's with icons)
+	 * </p>
+	 */
+	public static final String HIDE_ICONS_FOR_VIEW_TABS = "HIDE_ICONS_FOR_VIEW_TABS"; //$NON-NLS-1$
+
+	/**
+	 * Default value for "hide icons" preference for view tabs
+	 */
+	public static final boolean HIDE_ICONS_FOR_VIEW_TABS_DEFAULT = false;
+	/**
+	 * A named preference for setting CTabFolder's to show full text in view areas
+	 * <p>
+	 * The default value for this preference is: <code>false</code> (render
+	 * CTabFolder's without full text)
+	 * </p>
+	 */
+	public static final String SHOW_FULL_TEXT_FOR_VIEW_TABS = "SHOW_FULL_TEXT_FOR_VIEW_TABS"; //$NON-NLS-1$
+
+	/**
+	 * Default value for "show full text" preference for view tabs
+	 */
+	public static final boolean SHOW_FULL_TEXT_FOR_VIEW_TABS_DEFAULT = false;
+
+	private static int MIN_VIEW_CHARS = 1;
+	private static int MAX_VIEW_CHARS = Integer.MAX_VALUE;
 
 	// Constants for circle drawing
 	static enum CirclePart {
@@ -134,11 +172,14 @@ public class CTabRendering extends CTabFolderRenderer implements ICTabRendering,
 		super(parent);
 		parentWrapper = new CTabFolderWrapper(parent);
 
-		IEclipsePreferences preferences = getSwtRendererPreferences();
+		IEclipsePreferences preferences = InstanceScope.INSTANCE
+				.getNode(PREF_QUALIFIER_ECLIPSE_E4_UI_WORKBENCH_RENDERERS_SWT);
 		preferences.addPreferenceChangeListener(this);
 		parent.addDisposeListener(e -> preferences.removePreferenceChangeListener(this));
 
 		cornerRadiusPreferenceChanged();
+		showFullTextForViewTabsPreferenceChanged();
+		hideIconsForViewTabsPreferenceChanged();
 	}
 
 	@Override
@@ -400,8 +441,12 @@ public class CTabRendering extends CTabFolderRenderer implements ICTabRendering,
 						|| Objects.equals(outerKeylineColor, parent.getBackground())
 						? 0
 						: 1);
-		points[index++] = margin;
-		points[index++] = bottomY;
+
+		if (active) {
+			points[index++] = margin;
+			points[index++] = bottomY;
+		}
+
 		points[index++] = startX;
 		points[index++] = bottomY;
 
@@ -418,15 +463,6 @@ public class CTabRendering extends CTabFolderRenderer implements ICTabRendering,
 			points[index++] = parentSize.x - 1 - margin;
 			points[index++] = bottomY;
 		}
-
-		points[index++] = parentSize.x - 1 - margin;
-		points[index++] = parentSize.y - 1;
-
-		points[index++] = points[0];
-		points[index++] = parentSize.y - 1;
-
-		points[index++] = points[0];
-		points[index++] = points[1];
 
 		int[] tmpPoints = new int[index];
 		System.arraycopy(points, 0, tmpPoints, 0, index);
@@ -994,8 +1030,6 @@ public class CTabRendering extends CTabFolderRenderer implements ICTabRendering,
 	 * Sets whether to use a custom tab background (reusing tab colors and
 	 * gradients), or default one from plain CTabFolder (using widget background
 	 * color).
-	 *
-	 * @param drawCustomTabContentBackground
 	 */
 	@Override
 	public void setDrawCustomTabContentBackground(boolean drawCustomTabContentBackground) {
@@ -1004,10 +1038,6 @@ public class CTabRendering extends CTabFolderRenderer implements ICTabRendering,
 
 	/**
 	 * Draws tab content background, deriving the colors from the tab colors.
-	 *
-	 * @param gc
-	 * @param bounds
-	 * @param state
 	 */
 	private void drawCustomBackground(GC gc, Rectangle bounds, int state) {
 		boolean selected = (state & SWT.SELECTED) != 0;
@@ -1257,20 +1287,50 @@ public class CTabRendering extends CTabFolderRenderer implements ICTabRendering,
 	}
 
 	private void cornerRadiusPreferenceChanged() {
-		IEclipsePreferences preferences = getSwtRendererPreferences();
-		boolean useRound = preferences.getBoolean(USE_ROUND_TABS, USE_ROUND_TABS_DEFAULT);
+		boolean useRound = getSwtRendererPreference(USE_ROUND_TABS, USE_ROUND_TABS_DEFAULT);
 		setCornerRadius(useRound ? 16 : 0);
 	}
 
 	@Override
 	public void preferenceChange(PreferenceChangeEvent event) {
-		if (!USE_ROUND_TABS.equals(event.getKey())) {
-			return;
+		if (event.getKey().equals(USE_ROUND_TABS)) {
+			cornerRadiusPreferenceChanged();
+		} else if (event.getKey().equals(HIDE_ICONS_FOR_VIEW_TABS)) {
+			hideIconsForViewTabsPreferenceChanged();
+		} else if (event.getKey().equals(SHOW_FULL_TEXT_FOR_VIEW_TABS)) {
+			showFullTextForViewTabsPreferenceChanged();
 		}
-		cornerRadiusPreferenceChanged();
 	}
 
-	private IEclipsePreferences getSwtRendererPreferences() {
-		return InstanceScope.INSTANCE.getNode("org.eclipse.e4.ui.workbench.renderers.swt"); //$NON-NLS-1$
+	private void showFullTextForViewTabsPreferenceChanged() {
+		boolean showFullText = getSwtRendererPreference(SHOW_FULL_TEXT_FOR_VIEW_TABS,
+				SHOW_FULL_TEXT_FOR_VIEW_TABS_DEFAULT);
+		if (!isPartOfEditorStack()) {
+			if (showFullText) {
+				parent.setMinimumCharacters(MAX_VIEW_CHARS);
+			} else {
+				parent.setMinimumCharacters(MIN_VIEW_CHARS);
+			}
+			parent.redraw();
+		}
+	}
+
+	private void hideIconsForViewTabsPreferenceChanged() {
+		boolean hideIcons = getSwtRendererPreference(HIDE_ICONS_FOR_VIEW_TABS, HIDE_ICONS_FOR_VIEW_TABS_DEFAULT);
+		if (!isPartOfEditorStack()) {
+			parent.setSelectedImageVisible(!hideIcons);
+			parent.setUnselectedImageVisible(!hideIcons);
+			parent.redraw();
+		}
+	}
+
+	private boolean isPartOfEditorStack() {
+		MUIElement element = (MUIElement) parent.getData(AbstractPartRenderer.OWNING_ME);
+		return PartStackUtil.isEditorStack(element);
+	}
+
+	private boolean getSwtRendererPreference(String prefName, boolean defaultValue) {
+		return Platform.getPreferencesService().getBoolean(PREF_QUALIFIER_ECLIPSE_E4_UI_WORKBENCH_RENDERERS_SWT,
+				prefName, defaultValue, null);
 	}
 }

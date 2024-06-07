@@ -44,9 +44,6 @@ public class PreferencePageRegistryReader extends CategorizedPageRegistryReader 
 
 		/**
 		 * Create a new instance of the receiver.
-		 *
-		 * @param reader
-		 * @param nodeToCategorize
 		 */
 		public PreferencesCategoryNode(CategorizedPageRegistryReader reader, WorkbenchPreferenceNode nodeToCategorize) {
 			super(reader);
@@ -151,7 +148,7 @@ public class PreferencePageRegistryReader extends CategorizedPageRegistryReader 
 	 */
 	@Override
 	protected boolean readElement(IConfigurationElement element) {
-		if (element.getName().equals(TAG_PAGE) == false) {
+		if (!element.getName().equals(TAG_PAGE)) {
 			return false;
 		}
 		WorkbenchPreferenceNode node = createNode(element);
@@ -168,7 +165,6 @@ public class PreferencePageRegistryReader extends CategorizedPageRegistryReader 
 	/**
 	 * Create a workbench preference node.
 	 *
-	 * @param element
 	 * @return WorkbenchPreferenceNode
 	 */
 	public static WorkbenchPreferenceNode createNode(IConfigurationElement element) {

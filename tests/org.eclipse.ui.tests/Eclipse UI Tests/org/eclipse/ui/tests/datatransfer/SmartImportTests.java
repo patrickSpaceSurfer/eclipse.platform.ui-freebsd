@@ -14,6 +14,9 @@
  *******************************************************************************/
 package org.eclipse.ui.tests.datatransfer;
 
+import static org.eclipse.ui.tests.datatransfer.ImportTestUtils.restoreWorkspaceConfiguration;
+import static org.eclipse.ui.tests.datatransfer.ImportTestUtils.setWorkspaceAutoBuild;
+
 import java.io.CharArrayReader;
 import java.io.CharArrayWriter;
 import java.io.File;
@@ -72,7 +75,6 @@ import org.junit.runners.JUnit4;
 
 /**
  * @since 3.12
- *
  */
 @RunWith(JUnit4.class)
 public class SmartImportTests extends UITestCase {
@@ -88,6 +90,7 @@ public class SmartImportTests extends UITestCase {
 		super.doSetUp();
 		ImportMeProjectConfigurator.configuredProjects.clear();
 		clearAll();
+		setWorkspaceAutoBuild(true);
 	}
 
 	@Override
@@ -95,6 +98,7 @@ public class SmartImportTests extends UITestCase {
 		ImportMeProjectConfigurator.configuredProjects.clear();
 		try {
 			clearAll();
+			restoreWorkspaceConfiguration();
 		} finally {
 			super.doTearDown();
 		}
@@ -151,10 +155,7 @@ public class SmartImportTests extends UITestCase {
 			final Button okButton = getFinishButton(dialog.buttonBar);
 			assertNotNull(okButton);
 			processEventsUntil(() -> okButton.isEnabled(), -1);
-			wizard.performFinish();
-			waitForJobs(100, 1000); // give the job framework time to schedule the job
-			wizard.getImportJob().join();
-			waitForJobs(100, 5000); // give some time for asynchronous workspace jobs to complete
+			finishWizard(wizard);
 		} finally {
 			if (!dialog.getShell().isDisposed()) {
 				dialog.close();
@@ -162,9 +163,6 @@ public class SmartImportTests extends UITestCase {
 		}
 	}
 
-	/**
-	 * @param dialog
-	 */
 	private Button getFinishButton(Control control) {
 		if (control instanceof Button b && b.getText().equals(IDialogConstants.FINISH_LABEL)) {
 			return b;
@@ -446,10 +444,7 @@ public class SmartImportTests extends UITestCase {
 			combo.notifyListeners(SWT.Selection, e);
 			processEvents();
 			processEventsUntil(() -> okButton.isEnabled(), -1);
-			wizard.performFinish();
-			waitForJobs(100, 1000); // give the job framework time to schedule the job
-			wizard.getImportJob().join();
-			waitForJobs(100, 5000); // give some time for asynchronous workspace jobs to complete
+			finishWizard(wizard);
 			assertEquals("WorkingSet2 should be selected", Collections.singleton(workingSet2),
 					page.getSelectedWorkingSets());
 			assertEquals("Projects were not added to working set", 1, workingSet2.getElements().length);
@@ -461,6 +456,11 @@ public class SmartImportTests extends UITestCase {
 			workingSetManager.removeWorkingSet(workingSet);
 			workingSetManager.removeWorkingSet(workingSet2);
 		}
+	}
+
+	private void finishWizard(SmartImportWizard wizard) throws InterruptedException {
+		wizard.performFinish();
+		wizard.getCurrentImportJob().join();
 	}
 
 	/**

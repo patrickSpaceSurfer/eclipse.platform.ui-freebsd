@@ -32,8 +32,6 @@ public abstract class VisibleProperty<S extends Widget> extends WidgetBooleanVal
 	private static final int[] EVENT_TYPES = new int[] { SWT.Show, SWT.Hide };
 	private static final String CACHED_VALUE_KEY = VisibleProperty.class.getName() + ".IS_VISIBLE"; //$NON-NLS-1$
 
-	/**
-	 */
 	public VisibleProperty() {
 		super(EVENT_TYPES);
 	}
@@ -48,7 +46,7 @@ public abstract class VisibleProperty<S extends Widget> extends WidgetBooleanVal
 
 	@Override
 	public INativePropertyListener<S> adaptListener(ISimplePropertyListener<S, ValueDiff<? extends Boolean>> listener) {
-		return new WidgetListener<S, ValueDiff<? extends Boolean>>(this, listener, EVENT_TYPES, null) {
+		return new WidgetListener<>(this, listener, EVENT_TYPES, null) {
 			@Override
 			public void handleEvent(Event event) {
 				event.widget.setData(CACHED_VALUE_KEY, event.type == SWT.Show);

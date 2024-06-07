@@ -104,7 +104,7 @@ public abstract class ComputedList<E> extends AbstractObservableList<E> {
 	 */
 	public static <E> IObservableList<E> create(Supplier<List<E>> supplier) {
 		Objects.requireNonNull(supplier);
-		return new ComputedList<E>() {
+		return new ComputedList<>() {
 			@Override
 			protected List<E> calculate() {
 				return supplier.get();
@@ -138,7 +138,6 @@ public abstract class ComputedList<E> extends AbstractObservableList<E> {
 	 *
 	 * @param realm
 	 *            the realm
-	 *
 	 */
 	public ComputedList(Realm realm) {
 		this(realm, null);
@@ -178,7 +177,6 @@ public abstract class ComputedList<E> extends AbstractObservableList<E> {
 	 * <p>
 	 * The IChangeListener is attached to every dependency.
 	 * </p>
-	 *
 	 */
 	private class PrivateInterface implements Runnable, IChangeListener,
 			IStaleListener {

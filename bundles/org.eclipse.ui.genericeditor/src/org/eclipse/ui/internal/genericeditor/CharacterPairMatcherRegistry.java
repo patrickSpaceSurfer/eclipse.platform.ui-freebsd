@@ -48,8 +48,8 @@ public class CharacterPairMatcherRegistry {
 	}
 
 	/**
-	 * Get the contributed {@link IPresentationReconciliers}s that are relevant to
-	 * hook on source viewer according to document content types.
+	 * Get the contributed {@link ICharacterPairMatcher}s that are relevant to hook
+	 * on source viewer according to document content types.
 	 *
 	 * @param sourceViewer the source viewer we're hooking completion to.
 	 * @param editor       the text editor
@@ -64,7 +64,7 @@ public class CharacterPairMatcherRegistry {
 		}
 		return this.extensions.values().stream().filter(ext -> contentTypes.contains(ext.targetContentType))
 				.filter(ext -> ext.matches(sourceViewer, editor))
-				.sorted(new ContentTypeSpecializationComparator<ICharacterPairMatcher>())
+				.sorted(new ContentTypeSpecializationComparator<>())
 				.map(GenericContentTypeRelatedExtension<ICharacterPairMatcher>::createDelegate)
 				.collect(Collectors.toList());
 	}
@@ -77,7 +77,7 @@ public class CharacterPairMatcherRegistry {
 			if (!this.extensions.containsKey(extension)) {
 				try {
 					this.extensions.put(extension,
-							new GenericContentTypeRelatedExtension<ICharacterPairMatcher>(extension));
+							new GenericContentTypeRelatedExtension<>(extension));
 				} catch (Exception ex) {
 					GenericEditorPlugin.getDefault().getLog()
 							.log(new Status(IStatus.ERROR, GenericEditorPlugin.BUNDLE_ID, ex.getMessage(), ex));

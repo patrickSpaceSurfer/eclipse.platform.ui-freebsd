@@ -74,9 +74,9 @@ public class ImportOperation extends WorkspaceModifyOperation {
 
 	private IContainer destinationContainer;
 
-	private List selectedFiles;
+	private List<?> selectedFiles;
 
-	private List rejectedFiles;
+	private List<IPath> rejectedFiles;
 
 	private IImportStructureProvider provider;
 
@@ -232,11 +232,11 @@ public class ImportOperation extends WorkspaceModifyOperation {
 	 * @param policy on of the POLICY constants defined in the
 	 * class.
 	 */
-	void collectExistingReadonlyFiles(IPath sourceStart, List sources, ArrayList noOverwrite,
-			ArrayList overwriteReadonly, int policy, IProgressMonitor monitor) {
+	void collectExistingReadonlyFiles(IPath sourceStart, List<?> sources, ArrayList<IPath> noOverwrite,
+			ArrayList<IPath> overwriteReadonly, int policy, IProgressMonitor monitor) {
 		SubMonitor subMonitor = SubMonitor.convert(monitor, 100);
 		IWorkspaceRoot workspaceRoot = ResourcesPlugin.getWorkspace().getRoot();
-		Iterator sourceIter = sources.iterator();
+		Iterator<?> sourceIter = sources.iterator();
 		IPath sourceRootPath = null;
 
 		if (this.source != null) {
@@ -266,16 +266,16 @@ public class ImportOperation extends WorkspaceModifyOperation {
 
 			IFolder folder = getFolder(newDestination);
 			if (folder != null) {
-				if (policy != POLICY_FORCE_OVERWRITE) {
-					if (this.overwriteState == OVERWRITE_NONE
-							|| !queryOverwrite(newDestinationPath)) {
-						noOverwrite.add(folder);
-						continue;
-					}
-				}
-				if (provider.isFolder(nextSource)) {
+				if (provider.isFolder(nextSource) && this.overwriteState == OVERWRITE_ALL) {
 					collectExistingReadonlyFiles(newDestinationPath, provider.getChildren(nextSource), noOverwrite,
 							overwriteReadonly, POLICY_FORCE_OVERWRITE, subMonitor.split(100));
+				}
+				else if (policy != POLICY_FORCE_OVERWRITE) {
+					if (this.overwriteState == OVERWRITE_NONE
+							|| !queryOverwrite(newDestinationPath)) {
+						noOverwrite.add(folder.getFullPath());
+						continue;
+					}
 				}
 			} else {
 				IFile file = getFile(newDestination);
@@ -284,7 +284,7 @@ public class ImportOperation extends WorkspaceModifyOperation {
 					if (!queryOverwriteFile(file, policy)) {
 						noOverwrite.add(file.getFullPath());
 					} else if (file.isReadOnly()) {
-						overwriteReadonly.add(file);
+						overwriteReadonly.add(file.getFullPath());
 					}
 				}
 			}
@@ -457,12 +457,12 @@ public class ImportOperation extends WorkspaceModifyOperation {
 	 * @param files source files
 	 * @return list of rejected files as absolute paths. Object type IPath.
 	 */
-	ArrayList getRejectedFiles(IStatus multiStatus, IFile[] files) {
-		ArrayList filteredFiles = new ArrayList();
+	ArrayList<IPath> getRejectedFiles(IStatus multiStatus, IFile[] files) {
+		ArrayList<IPath> filteredFiles = new ArrayList<>();
 
 		IStatus[] status = multiStatus.getChildren();
 		for (int i = 0; i < status.length; i++) {
-			if (status[i].isOK() == false) {
+			if (!status[i].isOK()) {
 				errorTable.add(status[i]);
 				filteredFiles.add(files[i].getFullPath());
 			}
@@ -526,19 +526,18 @@ public class ImportOperation extends WorkspaceModifyOperation {
 			return;
 		}
 
-		InputStream contentStream = provider.getContents(fileObject);
-		if (contentStream == null) {
-			if (isNotReadableFile(fileObject)) {
-				errorTable.add(new Status(IStatus.ERROR, PlatformUI.PLUGIN_ID, 0,
-						NLS.bind(DataTransferMessages.ImportOperation_cannotReadError, fileObjectPath), null));
-			} else {
-				errorTable.add(new Status(IStatus.ERROR, PlatformUI.PLUGIN_ID, 0,
-						NLS.bind(DataTransferMessages.ImportOperation_openStreamError, fileObjectPath), null));
+		try (InputStream contentStream = provider.getContents(fileObject)) {
+			if (contentStream == null) {
+				if (isNotReadableFile(fileObject)) {
+					errorTable.add(new Status(IStatus.ERROR, PlatformUI.PLUGIN_ID, 0,
+							NLS.bind(DataTransferMessages.ImportOperation_cannotReadError, fileObjectPath), null));
+				} else {
+					errorTable.add(new Status(IStatus.ERROR, PlatformUI.PLUGIN_ID, 0,
+							NLS.bind(DataTransferMessages.ImportOperation_openStreamError, fileObjectPath), null));
+				}
+				return;
 			}
-			return;
-		}
 
-		try {
 			if (createVirtualFolder || createLinks || createLinkFilesOnly) {
 				if (targetResource.exists())
 					targetResource.delete(true, subMonitor.split(50));
@@ -565,13 +564,9 @@ public class ImportOperation extends WorkspaceModifyOperation {
 			}
 		} catch (CoreException e) {
 			errorTable.add(e.getStatus());
-		} finally {
-			try {
-				contentStream.close();
-			} catch (IOException e) {
+		} catch (IOException e) {
 				errorTable.add(new Status(IStatus.ERROR, PlatformUI.PLUGIN_ID, 0,
 						NLS.bind(DataTransferMessages.ImportOperation_closeStreamError, fileObjectPath), e));
-			}
 		}
 	}
 
@@ -598,9 +593,6 @@ public class ImportOperation extends WorkspaceModifyOperation {
 
 	/**
 	 * Reuse the file attributes set in the import.
-	 *
-	 * @param targetResource
-	 * @param fileObject
 	 */
 	private void setResourceAttributes(IFile targetResource, Object fileObject) {
 
@@ -641,12 +633,11 @@ public class ImportOperation extends WorkspaceModifyOperation {
 	 *
 	 * @param filesToImport the list of file system objects to import
 	 *   (element type: <code>Object</code>)
-	 * @throws CoreException
 	 * @exception OperationCanceledException if canceled
 	 */
-	void importFileSystemObjects(List filesToImport, IProgressMonitor monitor) throws CoreException {
+	void importFileSystemObjects(List<?> filesToImport, IProgressMonitor monitor) throws CoreException {
 		SubMonitor subMonitor = SubMonitor.convert(monitor, filesToImport.size());
-		Iterator filesEnum = filesToImport.iterator();
+		Iterator<?> filesEnum = filesToImport.iterator();
 		while (filesEnum.hasNext()) {
 			SubMonitor iterationMonitor = subMonitor.split(1);
 			Object fileSystemObject = filesEnum.next();
@@ -676,7 +667,6 @@ public class ImportOperation extends WorkspaceModifyOperation {
 	 * @param folderObject the file system container object to be imported
 	 * @param policy determines how the folder object and children are imported
 	 * @return the policy to use to import the folder's children
-	 * @throws CoreException
 	 */
 	int importFolder(Object folderObject, int policy, IProgressMonitor monitor) throws CoreException {
 		IContainer containerResource;
@@ -739,8 +729,6 @@ public class ImportOperation extends WorkspaceModifyOperation {
 	 * "C:\foo\bar\file.txt" to "VAR\file.txt" granted that the relativeVariable
 	 * is "VAR" and points to "C:\foo\bar\").
 	 *
-	 * @param location
-	 * @param resource
 	 * @return an URI that was made relative to a variable
 	 */
 	private IPath createRelativePath(IPath location, IResource resource) {
@@ -763,7 +751,6 @@ public class ImportOperation extends WorkspaceModifyOperation {
 	 *
 	 * @param fileSystemObject the file system object to be imported
 	 * @param policy determines how the file system object and children are imported
-	 * @throws CoreException
 	 * @exception OperationCanceledException if canceled
 	 */
 	void importRecursivelyFrom(Object fileSystemObject, int policy, IProgressMonitor mon) throws CoreException {
@@ -775,7 +762,7 @@ public class ImportOperation extends WorkspaceModifyOperation {
 
 		int childPolicy = importFolder(fileSystemObject, policy, subMonitor.split(10));
 		if (childPolicy != POLICY_SKIP_CHILDREN) {
-			List children = provider.getChildren(fileSystemObject);
+			List<?> children = provider.getChildren(fileSystemObject);
 			SubMonitor loopMonitor = subMonitor.split(90).setWorkRemaining(children.size());
 			for (Object child : children) {
 				importRecursivelyFrom(child, childPolicy, loopMonitor.split(1));
@@ -892,7 +879,7 @@ public class ImportOperation extends WorkspaceModifyOperation {
 	 * @param existingFiles existing files to validate
 	 * @return list of rejected files as absolute paths. Object type IPath.
 	 */
-	ArrayList validateEdit(List<IFile> existingFiles) {
+	ArrayList<IPath> validateEdit(List<IPath> existingFiles) {
 
 		if (existingFiles.size() > 0) {
 			IFile[] files = existingFiles
@@ -908,7 +895,7 @@ public class ImportOperation extends WorkspaceModifyOperation {
 			if(!status.isOK()){
 				//If just a single status reject them all
 				errorTable.add(status);
-				ArrayList filteredFiles = new ArrayList();
+				ArrayList<IPath> filteredFiles = new ArrayList<>();
 
 				for (IFile file : files) {
 					filteredFiles.add(file.getFullPath());
@@ -917,7 +904,7 @@ public class ImportOperation extends WorkspaceModifyOperation {
 			}
 
 		}
-		return new ArrayList();
+		return new ArrayList<>();
 	}
 
 	/**
@@ -927,9 +914,9 @@ public class ImportOperation extends WorkspaceModifyOperation {
 	 *
 	 * @param sourceFiles files to validate
 	 */
-	void validateFiles(List sourceFiles, IProgressMonitor monitor) {
-		ArrayList noOverwrite = new ArrayList();
-		ArrayList overwriteReadonly = new ArrayList();
+	void validateFiles(List<?> sourceFiles, IProgressMonitor monitor) {
+		ArrayList<IPath> noOverwrite = new ArrayList<>();
+		ArrayList<IPath> overwriteReadonly = new ArrayList<>();
 
 		collectExistingReadonlyFiles(destinationPath, sourceFiles, noOverwrite, overwriteReadonly, POLICY_DEFAULT,
 				monitor);

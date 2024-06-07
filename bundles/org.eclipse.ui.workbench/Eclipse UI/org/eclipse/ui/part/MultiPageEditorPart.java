@@ -22,7 +22,7 @@ import java.util.List;
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
-import org.eclipse.core.commands.util.Tracing;
+import org.eclipse.core.commands.internal.util.Tracing;
 import org.eclipse.core.runtime.Adapters;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.ISafeRunnable;
@@ -237,7 +237,6 @@ public abstract class MultiPageEditorPart extends EditorPart implements IPageCha
 	/**
 	 * Get the orientation of the editor.
 	 *
-	 * @param editor
 	 * @return int the orientation flag
 	 * @see SWT#RIGHT_TO_LEFT
 	 * @see SWT#LEFT_TO_RIGHT
@@ -335,13 +334,13 @@ public abstract class MultiPageEditorPart extends EditorPart implements IPageCha
 		// done
 		if (getActivePage() == -1) {
 			setActivePage(0);
-			IEditorPart part = getEditor(0);
-			if (part != null) {
-				final IServiceLocator serviceLocator = part.getEditorSite();
-				if (serviceLocator instanceof INestable) {
-					activeServiceLocator = (INestable) serviceLocator;
-					activeServiceLocator.activate();
-				}
+		}
+		IEditorPart part = getEditor(getActivePage());
+		if (part != null) {
+			final IServiceLocator serviceLocator = part.getEditorSite();
+			if (serviceLocator instanceof INestable) {
+				activeServiceLocator = (INestable) serviceLocator;
+				activeServiceLocator.activate();
 			}
 		}
 		initializePageSwitching();

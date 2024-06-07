@@ -32,7 +32,7 @@ import org.eclipse.core.commands.CommandManager;
 import org.eclipse.core.commands.ParameterizedCommand;
 import org.eclipse.core.commands.common.HandleObject;
 import org.eclipse.core.commands.common.NotDefinedException;
-import org.eclipse.core.commands.util.Tracing;
+import org.eclipse.core.commands.internal.util.Tracing;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtension;
 import org.eclipse.core.runtime.IExtensionDelta;
@@ -813,7 +813,6 @@ public class BindingPersistence extends PreferencePersistence {
 	 * Reads the specified attribute from the configuration element. If the value is
 	 * an empty string, will return null.
 	 *
-	 * @param configurationElement
 	 * @return the attribute value
 	 */
 	private static String readNonEmptyAttribute(IConfigurationElement configurationElement, String attribute) {

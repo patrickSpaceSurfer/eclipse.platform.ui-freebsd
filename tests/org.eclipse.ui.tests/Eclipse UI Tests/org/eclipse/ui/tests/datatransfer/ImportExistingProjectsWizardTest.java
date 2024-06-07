@@ -17,6 +17,8 @@
 package org.eclipse.ui.tests.datatransfer;
 
 import static org.eclipse.jface.dialogs.IMessageProvider.WARNING;
+import static org.eclipse.ui.tests.datatransfer.ImportTestUtils.restoreWorkspaceConfiguration;
+import static org.eclipse.ui.tests.datatransfer.ImportTestUtils.setWorkspaceAutoBuild;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
@@ -102,6 +104,7 @@ public class ImportExistingProjectsWizardTest extends UITestCase {
 						ResourcesPlugin.PREF_AUTO_REFRESH);
 		ResourcesPlugin.getPlugin().getPluginPreferences().setValue(
 				ResourcesPlugin.PREF_AUTO_REFRESH, true);
+		setWorkspaceAutoBuild(true);
 	}
 
 	@Override
@@ -133,6 +136,7 @@ public class ImportExistingProjectsWizardTest extends UITestCase {
 
 		ResourcesPlugin.getPlugin().getPluginPreferences().setValue(
 				ResourcesPlugin.PREF_AUTO_REFRESH, originalRefreshSetting);
+		restoreWorkspaceConfiguration();
 		super.doTearDown();
 	}
 
@@ -856,9 +860,6 @@ public class ImportExistingProjectsWizardTest extends UITestCase {
 	 * Verify whether or not the imported project is in the current workspace
 	 * location (i.e. copy projects was true) or in another workspace location
 	 * (i.e. copy projects was false).
-	 *
-	 * @param inWorkspace
-	 * @param project
 	 */
 	private void verifyProjectInWorkspace(final boolean inWorkspace,
 			final IProject project, String[] fileList, boolean isListFiles) {

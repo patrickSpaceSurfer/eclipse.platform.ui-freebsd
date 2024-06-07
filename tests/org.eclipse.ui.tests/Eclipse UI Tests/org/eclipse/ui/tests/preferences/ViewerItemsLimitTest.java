@@ -89,9 +89,8 @@ public class ViewerItemsLimitTest extends UITestCase {
 		super.doSetUp();
 		cleanUp();
 		preferenceStore = WorkbenchPlugin.getDefault().getPreferenceStore();
-		// TODO: preference is set to zero, enable once preference is restored
-//		int viewLimit = preferenceStore.getInt(IWorkbenchPreferenceConstants.LARGE_VIEW_LIMIT);
-//		assertEquals("Default viewer limit must be " + DEFAULT_VIEW_LIMIT, DEFAULT_VIEW_LIMIT, viewLimit);
+		int viewLimit = preferenceStore.getInt(IWorkbenchPreferenceConstants.LARGE_VIEW_LIMIT);
+		assertEquals("Default viewer limit must be " + DEFAULT_VIEW_LIMIT, DEFAULT_VIEW_LIMIT, viewLimit);
 		window = getActiveWindow();
 		activePage = window.getActivePage();
 		defaultPerspective = activePage.getPerspective();
@@ -117,8 +116,6 @@ public class ViewerItemsLimitTest extends UITestCase {
 	 * check it goes inside ExpandbaleNode. Delete the newly added project and check
 	 * the projects order is as expected. Reset the viewer limit to default and
 	 * check if all the project are visible.
-	 *
-	 * @throws CoreException
 	 */
 	@Test
 	public void testProjectExplorerLimitedProjects() throws CoreException {
@@ -247,7 +244,6 @@ public class ViewerItemsLimitTest extends UITestCase {
 		assertEquals(expLabel, node.getLabel());
 	}
 
-	@SuppressWarnings("boxing")
 	private String calculateExpandableLabel(Object data, int realInputSize) {
 		ExpandableNode node = (ExpandableNode) data;
 		int remaining = realInputSize - node.getOffset();
@@ -274,8 +270,6 @@ public class ViewerItemsLimitTest extends UITestCase {
 	 * Add one more marker check which will go inside expandable node. Delete the
 	 * last added marker and check it refreshes properly. Set the viewer limit to
 	 * default and check if all the markers are visible.
-	 *
-	 * @throws CoreException
 	 */
 	@Test
 	public void testMarkersViewLimitedMarkers() throws CoreException {
@@ -368,8 +362,6 @@ public class ViewerItemsLimitTest extends UITestCase {
 	 * Create some projects and some search data. Create some query and execute the
 	 * search. Check limited search results. Add new search data onto workspace and
 	 * refresh search to see if search results updated properly.
-	 *
-	 * @throws CoreException
 	 */
 	@Ignore
 	@Test

@@ -26,7 +26,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.SubProgressMonitor;
+import org.eclipse.core.runtime.SubMonitor;
 
 import org.eclipse.core.resources.IWorkspaceRunnable;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -62,7 +62,8 @@ public class ChangeExceptionHandler {
 			Control result= super.createMessageArea(parent);
 
 			// Panic code: use 'parent' instead of 'result' in case super implementation changes in the future
-			new Label(parent, SWT.NONE); // filler as parent has 2 columns (icon and label)
+			@SuppressWarnings("unused")
+			Label filler= new Label(parent, SWT.NONE); // filler as parent has 2 columns (icon and label)
 			Label label= new Label(parent, SWT.NONE);
 			label.setText(RefactoringUIMessages.ChangeExceptionHandler_button_explanation);
 			label.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
@@ -120,16 +121,16 @@ public class ChangeExceptionHandler {
 
 	private void performUndo(final Change undo) {
 		IWorkspaceRunnable runnable= monitor -> {
-			monitor.beginTask("", 11); //$NON-NLS-1$
+			SubMonitor subMonitor= SubMonitor.convert(monitor, 11);
 			try {
-				undo.initializeValidationData(new NotCancelableProgressMonitor(new SubProgressMonitor(monitor, 1)));
-				if (undo.isValid(new SubProgressMonitor(monitor,1)).hasFatalError()) {
-					monitor.done();
+				undo.initializeValidationData(new NotCancelableProgressMonitor(subMonitor.newChild(1)));
+				if (undo.isValid(subMonitor.newChild(1)).hasFatalError()) {
 					return;
 				}
-				undo.perform(new SubProgressMonitor(monitor, 9));
+				undo.perform(subMonitor.newChild(9));
 			} finally {
 				undo.dispose();
+				monitor.done();
 			}
 		};
 		WorkbenchRunnableAdapter adapter= new WorkbenchRunnableAdapter(runnable,

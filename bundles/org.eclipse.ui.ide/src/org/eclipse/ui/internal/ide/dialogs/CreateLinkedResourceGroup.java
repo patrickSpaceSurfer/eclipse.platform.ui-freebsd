@@ -339,7 +339,6 @@ public class CreateLinkedResourceGroup {
 	/**
 	 * Create the file system selection area.
 	 *
-	 * @param composite
 	 * @param enabled
 	 *            the initial enablement state.
 	 */
@@ -367,9 +366,6 @@ public class CreateLinkedResourceGroup {
 
 	/**
 	 * Create the composite for the resolved path.
-	 *
-	 * @param locationGroup
-	 * @param indent
 	 */
 	private void createResolvedPathGroup(Composite locationGroup, int indent) {
 		GridLayout layout;
@@ -411,7 +407,7 @@ public class CreateLinkedResourceGroup {
 	 * Disposes the group's widgets.
 	 */
 	public void dispose() {
-		if (groupComposite != null && groupComposite.isDisposed() == false) {
+		if (groupComposite != null && !groupComposite.isDisposed()) {
 			groupComposite.dispose();
 		}
 	}
@@ -658,7 +654,7 @@ public class CreateLinkedResourceGroup {
 	 */
 	public void setLinkTarget(String target) {
 		linkTarget = target;
-		if (linkTargetField != null && linkTargetField.isDisposed() == false) {
+		if (linkTargetField != null && !linkTargetField.isDisposed()) {
 			linkTargetField.setText(target);
 		}
 	}

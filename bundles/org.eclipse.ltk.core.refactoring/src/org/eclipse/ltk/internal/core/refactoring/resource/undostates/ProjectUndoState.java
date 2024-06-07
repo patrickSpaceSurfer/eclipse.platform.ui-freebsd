@@ -17,8 +17,7 @@ package org.eclipse.ltk.internal.core.refactoring.resource.undostates;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.OperationCanceledException;
-import org.eclipse.core.runtime.SubProgressMonitor;
+import org.eclipse.core.runtime.SubMonitor;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
@@ -34,7 +33,6 @@ import org.eclipse.ltk.internal.core.refactoring.RefactoringCoreMessages;
  * This class is not intended to be instantiated or used by clients.
  *
  * @since 3.4
- *
  */
 public class ProjectUndoState extends ContainerUndoState {
 
@@ -90,22 +88,17 @@ public class ProjectUndoState extends ContainerUndoState {
 			return;
 		}
 		IProject projectHandle = (IProject) resource;
-		monitor.beginTask("", 200); //$NON-NLS-1$
-		monitor.setTaskName(RefactoringCoreMessages.FolderDescription_NewFolderProgress);
+		SubMonitor subMonitor= SubMonitor.convert(monitor, RefactoringCoreMessages.FolderDescription_NewFolderProgress, 200);
 		if (projectDescription == null) {
-			projectHandle.create(new SubProgressMonitor(monitor, 100));
+			projectHandle.create(subMonitor.split(100));
 		} else {
-			projectHandle.create(projectDescription, new SubProgressMonitor(
-					monitor, 100));
+			projectHandle.create(projectDescription, subMonitor.split(100));
 		}
 
-		if (monitor.isCanceled()) {
-			throw new OperationCanceledException();
-		}
 		if (openOnCreate) {
-			projectHandle.open(IResource.NONE ,new SubProgressMonitor(monitor, 100));
+			projectHandle.open(IResource.NONE, subMonitor.split(100));
 		}
-		monitor.done();
+		subMonitor.done();
 	}
 
 

@@ -50,7 +50,6 @@ import org.eclipse.core.runtime.Assert;
  *            the type of the values in this map
  *
  * @since 1.1
- *
  */
 public class CompositeMap<K, I, V> extends ObservableMap<K, V> {
 	// adds that need to go through the second map and thus will be picked up by
@@ -287,7 +286,7 @@ public class CompositeMap<K, I, V> extends ObservableMap<K, V> {
 	 */
 	public CompositeMap(IObservableMap<K, I> firstMap,
 			IObservableFactory<? super IObservableSet<I>, ? extends IObservableMap<I, V>> secondMapFactory) {
-		super(firstMap.getRealm(), new HashMap<K, V>());
+		super(firstMap.getRealm(), new HashMap<>());
 		this.firstMap = new BidiObservableMap<>(firstMap);
 		this.firstMap.addMapChangeListener(firstMapListener);
 		rangeSet.addAll(this.firstMap.values());

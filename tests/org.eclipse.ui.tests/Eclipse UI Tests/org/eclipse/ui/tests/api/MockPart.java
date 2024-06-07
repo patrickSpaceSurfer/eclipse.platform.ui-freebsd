@@ -37,11 +37,8 @@ import org.osgi.framework.Bundle;
  *
  * @since 3.0
  */
-public class MockPart extends EventManager implements IExecutableExtension {
+public class MockPart extends EventManager implements IExecutableExtension, IAdaptable {
 
-	/**
-	 *
-	 */
 	public MockPart() {
 		callTrace = new CallHistory(this);
 		selectionProvider = new MockSelectionProvider();
@@ -155,9 +152,9 @@ public class MockPart extends EventManager implements IExecutableExtension {
 	}
 
 	/**
-	 * @param adapter
 	 * @see IAdaptable#getAdapter(Class)
 	 */
+	@Override
 	public <T> T getAdapter(Class<T> adapter) {
 		return null;
 	}

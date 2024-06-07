@@ -116,8 +116,7 @@ public class MenuManagerShowProcessor implements IMenuListener2 {
 	}
 
 	/**
-	 * HashMap key for storage of {@link MDynamicMenuContribution} elements used
-	 * in {@link #processDynamicElements(MMenu, MenuManager)}
+	 * HashMap key for storage of {@link MDynamicMenuContribution} elements
 	 */
 	protected static final String DYNAMIC_ELEMENT_STORAGE_KEY = MenuManagerShowProcessor.class
 			.getSimpleName() + ".dynamicElements"; //$NON-NLS-1$
@@ -125,10 +124,6 @@ public class MenuManagerShowProcessor implements IMenuListener2 {
 	/**
 	 * Process dynamic menu contributions provided by
 	 * {@link MDynamicMenuContribution} application model elements
-	 *
-	 * @param menuModel
-	 * @param menuManager
-	 *
 	 */
 	private void processDynamicElements(MMenu menuModel, MenuManager menuManager) {
 		MMenuElement[] menuElements = menuModel.getChildren().toArray(
@@ -198,9 +193,6 @@ public class MenuManagerShowProcessor implements IMenuListener2 {
 	 * This needs to be done or else menu items get added multiple times to
 	 * MenuModel which results in incorrect behavior and memory leak - bug
 	 * 486474
-	 *
-	 * @param menuModel
-	 * @param menuManager
 	 */
 	private void cleanUp(MMenu menuModel, MenuManager menuManager) {
 		if (Policy.DEBUG_MENUS) {

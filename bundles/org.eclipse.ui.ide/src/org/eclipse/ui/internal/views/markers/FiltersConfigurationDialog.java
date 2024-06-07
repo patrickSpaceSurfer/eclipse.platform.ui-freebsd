@@ -71,7 +71,6 @@ import org.osgi.framework.FrameworkUtil;
  * problems view
  *
  * @since 3.3
- *
  */
 public class FiltersConfigurationDialog extends TrayDialog {
 
@@ -97,7 +96,7 @@ public class FiltersConfigurationDialog extends TrayDialog {
 	private Button limitButton;
 	private Text limitText;
 
-	private GroupFilterConfigurationArea scopeArea = new ScopeArea();
+	private GroupFilterConfigurationArea scopeArea = createScopeArea();
 	private ScrolledForm form;
 
 	private Collection<FilterConfigurationArea> configAreas;
@@ -109,9 +108,6 @@ public class FiltersConfigurationDialog extends TrayDialog {
 
 	/**
 	 * Create a new instance of the receiver on builder.
-	 *
-	 * @param parentShell
-	 * @param generator
 	 */
 	public FiltersConfigurationDialog(Shell parentShell, MarkerContentGenerator generator) {
 		super(parentShell);
@@ -178,6 +174,15 @@ public class FiltersConfigurationDialog extends TrayDialog {
 		initUI();
 
 		return container;
+	}
+
+	/**
+	 * Create a new ScopeArea for the receiver.
+	 *
+	 * @return ScopeArea
+	 */
+	protected ScopeArea createScopeArea() {
+		return new ScopeArea();
 	}
 
 	private void initUI() {
@@ -247,8 +252,6 @@ public class FiltersConfigurationDialog extends TrayDialog {
 
 	/**
 	 * Create the area of the dialog that apply's to all configurations.
-	 *
-	 * @param parent
 	 */
 	private void createAllConfigArea(Composite parent) {
 		compositeLimits = new Composite(parent, SWT.NONE);
@@ -317,9 +320,6 @@ public class FiltersConfigurationDialog extends TrayDialog {
 		createButton(defaultButtonComposite, DEFAULTS_BUTTON_ID, JFaceResources.getString("defaults"), false); //$NON-NLS-1$
 	}
 
-	/**
-	 * @param parent
-	 */
 	private void createConfigs(Composite parent) {
 		Composite composite = new Composite(parent, SWT.NONE);
 		composite.setLayout(new GridLayout(2, false));
@@ -423,9 +423,6 @@ public class FiltersConfigurationDialog extends TrayDialog {
 	/**
 	 * Create a field area in the form for the FilterConfigurationArea
 	 *
-	 * @param toolkit
-	 * @param scrolledForm
-	 * @param area
 	 * @param expand
 	 *            <code>true</code> if the area should be expanded by default
 	 */
@@ -456,9 +453,6 @@ public class FiltersConfigurationDialog extends TrayDialog {
 		expandable.setExpanded(expand);
 	}
 
-	/**
-	 * @param composite
-	 */
 	private void createButtons(Composite composite) {
 		Composite buttons = new Composite(composite, SWT.NONE);
 		GridLayout buttonLayout = new GridLayout();
@@ -658,7 +652,6 @@ public class FiltersConfigurationDialog extends TrayDialog {
 	/**
 	 * Make a working copy of the groups.
 	 *
-	 * @param groups
 	 * @return Collection of MarkerFieldFilterGroup
 	 */
 	private Collection<MarkerFieldFilterGroup> makeWorkingCopy(Collection<MarkerFieldFilterGroup> groups) {
@@ -724,8 +717,6 @@ public class FiltersConfigurationDialog extends TrayDialog {
 
 	/**
 	 * Remove the filters in selection.
-	 *
-	 * @param selection
 	 */
 	private void removeFilters(ISelection selection) {
 		filterGroups.remove(((IStructuredSelection) selection).getFirstElement());
@@ -762,9 +753,6 @@ public class FiltersConfigurationDialog extends TrayDialog {
 
 	/**
 	 * Set the control and all of it's visibility state to visible.
-	 *
-	 * @param enabled
-	 * @param control
 	 */
 	private void setEnabled(boolean enabled, Control control) {
 		control.setEnabled(enabled);

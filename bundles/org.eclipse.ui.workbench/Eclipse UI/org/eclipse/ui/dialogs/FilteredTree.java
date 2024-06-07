@@ -148,6 +148,16 @@ public class FilteredTree extends Composite {
 	private static final long SOFT_MAX_EXPAND_TIME = 200;
 
 	/**
+	 * Time for refresh job delay in terms of expansion in long value
+	 */
+	private final long refreshJobDelayInMillis;
+
+	/**
+	 * Default time for refresh job delay in ms
+	 */
+	private static final long DEFAULT_REFRESH_TIME = 200;
+
+	/**
 	 * Create a new instance of the receiver. Subclasses that wish to override the
 	 * default creation behavior may use this constructor, but must ensure that the
 	 * <code>init(composite, int, PatternFilter)</code> method is called in the
@@ -171,9 +181,22 @@ public class FilteredTree extends Composite {
 	public FilteredTree(Composite parent, boolean useNewLook, boolean useFastHashLookup) {
 		super(parent, SWT.NONE);
 		this.parent = parent;
+		this.refreshJobDelayInMillis = DEFAULT_REFRESH_TIME;
 		if (treeViewer != null) {
 			treeViewer.setUseHashlookup(useFastHashLookup);
 		}
+	}
+
+	/**
+	 * Calls
+	 * {@link #FilteredTree(Composite, int, PatternFilter, boolean, boolean, long)}
+	 * with a default refresh time
+	 *
+	 * @since 3.116
+	 */
+	public FilteredTree(Composite parent, int treeStyle, PatternFilter filter, boolean useNewLook,
+			boolean useFastHashLookup) {
+		this(parent, treeStyle, filter, useNewLook, useFastHashLookup, DEFAULT_REFRESH_TIME);
 	}
 
 	/**
@@ -187,20 +210,24 @@ public class FilteredTree extends Composite {
 	 *
 	 * </p>
 	 *
-	 * @param parent            the parent <code>Composite</code>
-	 * @param treeStyle         the style bits for the <code>Tree</code>
-	 * @param filter            the filter to be used
-	 * @param useNewLook        ignored, keep for API compliance
-	 * @param useFastHashLookup true, if tree should use fast hash lookup, false, if
-	 *                          the tree should be slow but working for data with
-	 *                          mutable or broken hashcode implementation. Only used
-	 *                          if treeViewer is already initialized
-	 * @since 3.116
+	 * @param parent                  the parent <code>Composite</code>
+	 * @param treeStyle               the style bits for the <code>Tree</code>
+	 * @param filter                  the filter to be used
+	 * @param useNewLook              ignored, keep for API compliance
+	 * @param useFastHashLookup       true, if tree should use fast hash lookup,
+	 *                                false, if the tree should be slow but working
+	 *                                for data with mutable or broken hashcode
+	 *                                implementation. Only used if treeViewer is
+	 *                                already initialized
+	 * @param refreshJobDelayInMillis refresh delay in ms, the time to expand the
+	 *                                tree after debounce
+	 * @since 3.132
 	 */
 	public FilteredTree(Composite parent, int treeStyle, PatternFilter filter, boolean useNewLook,
-			boolean useFastHashLookup) {
+			boolean useFastHashLookup, long refreshJobDelayInMillis) {
 		super(parent, SWT.NONE);
 		this.parent = parent;
+		this.refreshJobDelayInMillis = refreshJobDelayInMillis;
 		init(treeStyle, filter);
 		if (treeViewer != null) {
 			treeViewer.setUseHashlookup(useFastHashLookup);
@@ -231,6 +258,7 @@ public class FilteredTree extends Composite {
 	@Deprecated
 	protected FilteredTree(Composite parent) {
 		super(parent, SWT.NONE);
+		this.refreshJobDelayInMillis = DEFAULT_REFRESH_TIME;
 		this.parent = parent;
 	}
 
@@ -259,8 +287,7 @@ public class FilteredTree extends Composite {
 	 */
 	@Deprecated
 	protected FilteredTree(Composite parent, boolean useNewLook) {
-		super(parent, SWT.NONE);
-		this.parent = parent;
+		this(parent);
 	}
 
 	/**
@@ -279,13 +306,10 @@ public class FilteredTree extends Composite {
 	 *
 	 * @deprecated As of 3.116, replaced by
 	 *             {@link #FilteredTree(Composite, int, PatternFilter, boolean, boolean)}
-	 *
-	 *
 	 */
 	@Deprecated
 	public FilteredTree(Composite parent, int treeStyle, PatternFilter filter) {
-		super(parent, SWT.NONE);
-		this.parent = parent;
+		this(parent);
 		init(treeStyle, filter);
 	}
 
@@ -307,13 +331,10 @@ public class FilteredTree extends Composite {
 	 * @since 3.5
 	 * @deprecated As of 3.116, replaced by
 	 *             {@link #FilteredTree(Composite, int, PatternFilter, boolean, boolean)}
-	 *
 	 */
 	@Deprecated
 	public FilteredTree(Composite parent, int treeStyle, PatternFilter filter, boolean useNewLook) {
-		super(parent, SWT.NONE);
-		this.parent = parent;
-		init(treeStyle, filter);
+		this(parent, treeStyle, filter);
 	}
 
 	/**
@@ -424,7 +445,6 @@ public class FilteredTree extends Composite {
 	/**
 	 * Return the first item in the tree that matches the filter pattern.
 	 *
-	 * @param items
 	 * @return the first matching TreeItem
 	 */
 	private TreeItem getFirstMatchingItem(TreeItem[] items) {
@@ -443,7 +463,6 @@ public class FilteredTree extends Composite {
 
 	/**
 	 * Create the refresh job for the receiver.
-	 *
 	 */
 	private void createRefreshJob() {
 		refreshJob = doCreateRefreshJob();
@@ -528,10 +547,6 @@ public class FilteredTree extends Composite {
 			 * Returns true if the job should be canceled (because of timeout or actual
 			 * cancellation).
 			 *
-			 * @param items
-			 * @param monitor
-			 * @param cancelTime
-			 * @param numItemsLeft
 			 * @return true if canceled
 			 */
 			private boolean recursiveExpand(TreeItem[] items, IProgressMonitor monitor, long cancelTime,
@@ -613,7 +628,6 @@ public class FilteredTree extends Composite {
 			/**
 			 * Return the count of treeItem and it's children to infinite depth.
 			 *
-			 * @param treeItem
 			 * @return int
 			 */
 			private int itemCount(TreeItem treeItem) {
@@ -765,7 +779,7 @@ public class FilteredTree extends Composite {
 	 * @since 3.5
 	 */
 	protected long getRefreshJobDelay() {
-		return 200;
+		return refreshJobDelayInMillis;
 	}
 
 	/**
@@ -882,7 +896,6 @@ public class FilteredTree extends Composite {
 
 	/**
 	 * Select all text in the filter text field.
-	 *
 	 */
 	protected void selectAll() {
 		if (filterText != null) {
@@ -940,7 +953,6 @@ public class FilteredTree extends Composite {
 	 * change to the tree. See bug 187200.
 	 *
 	 * @since 3.3
-	 *
 	 */
 	class NotifyingTreeViewer extends TreeViewer {
 

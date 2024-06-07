@@ -92,6 +92,7 @@ import org.eclipse.e4.ui.model.application.ui.menu.MToolControl;
 import org.eclipse.e4.ui.workbench.IPresentationEngine;
 import org.eclipse.e4.ui.workbench.UIEvents;
 import org.eclipse.e4.ui.workbench.UIEvents.EventTags;
+import org.eclipse.e4.ui.workbench.addons.minmax.TrimStack;
 import org.eclipse.e4.ui.workbench.modeling.EModelService;
 import org.eclipse.e4.ui.workbench.modeling.EPartService;
 import org.eclipse.e4.ui.workbench.modeling.EPartService.PartState;
@@ -873,13 +874,10 @@ public class WorkbenchPage implements IWorkbenchPage {
 
 		final MToolControl minimizedStack = (MToolControl) changedObj;
 
-		// Note: The non-API type TrimStack is not imported to avoid
-		// https://bugs.eclipse.org/435521
-		if (!(minimizedStack.getObject() instanceof org.eclipse.e4.ui.workbench.addons.minmax.TrimStack))
+		if (!(minimizedStack.getObject() instanceof TrimStack))
 			return;
 
-		org.eclipse.e4.ui.workbench.addons.minmax.TrimStack ts = (org.eclipse.e4.ui.workbench.addons.minmax.TrimStack) minimizedStack
-				.getObject();
+		TrimStack ts = (TrimStack) minimizedStack.getObject();
 		if (!(ts.getMinimizedElement() instanceof MPartStack))
 			return;
 
@@ -925,9 +923,8 @@ public class WorkbenchPage implements IWorkbenchPage {
 	 *
 	 * @param w     the parent window
 	 * @param input the page input
-	 * @throws WorkbenchException
 	 */
-	public WorkbenchPage(WorkbenchWindow w, IAdaptable input) throws WorkbenchException {
+	public WorkbenchPage(WorkbenchWindow w, IAdaptable input) {
 		super();
 		init(w, input);
 	}
@@ -1550,8 +1547,6 @@ public class WorkbenchPage implements IWorkbenchPage {
 	/**
 	 * Enables or disables listener notifications. This is used to delay listener
 	 * notifications until the end of a public method.
-	 *
-	 * @param shouldDefer
 	 */
 	private void deferUpdates(boolean shouldDefer) {
 		if (shouldDefer) {
@@ -2001,7 +1996,7 @@ public class WorkbenchPage implements IWorkbenchPage {
 	 */
 	private void firePropertyChange(String changeId, Object oldValue, Object newValue) {
 
-		UIListenerLogging.logPagePropertyChanged(this, changeId, oldValue, newValue);
+		UIListenerLogging.logPagePropertyChanged(this, changeId, newValue);
 
 		PropertyChangeEvent event = new PropertyChangeEvent(this, changeId, oldValue, newValue);
 
@@ -3808,7 +3803,6 @@ public class WorkbenchPage implements IWorkbenchPage {
 	 * succeeded or not.
 	 *
 	 * @param saveable the saveable part to save
-	 * @param part
 	 * @param confirm  whether the user should be prompted for confirmation of the
 	 *                 save request
 	 * @param closing  whether the part will be closed after the save operation has
@@ -3937,8 +3931,6 @@ public class WorkbenchPage implements IWorkbenchPage {
 	 * contribution but whose contributing bundle is no longer available. In order
 	 * to allow it to behave correctly within the environment (for Close, Reset...)
 	 * we turn it into a 'custom' perspective on its first activation.
-	 *
-	 * @return
 	 */
 	private PerspectiveDescriptor fixOrphanPerspective(MPerspective mperspective) {
 		PerspectiveRegistry reg = (PerspectiveRegistry) PlatformUI.getWorkbench().getPerspectiveRegistry();
@@ -4097,7 +4089,6 @@ public class WorkbenchPage implements IWorkbenchPage {
 	}
 
 	/**
-	 * @param perspective
 	 * @return never null
 	 */
 	private MPerspective createPerspective(IPerspectiveDescriptor perspective) {
@@ -5502,21 +5493,17 @@ public class WorkbenchPage implements IWorkbenchPage {
 		persp.getTags().addAll(newWizards);
 	}
 
-	/**
-	 *
-	 */
 	public void resetToolBarLayout() {
 		ICoolBarManager2 mgr = (ICoolBarManager2) legacyWindow.getCoolBarManager2();
 		mgr.resetItemOrder();
 	}
 
 	/**
-	 * Call {@link #firePartDeactivated(MPart)} if the passed part is the currently
-	 * active part according to the part service. This method should only be called
-	 * in the case of workbench shutdown, where E4 does not fire deactivate
-	 * listeners on the active part.
-	 *
-	 * @param part
+	 * Fires
+	 * {@link org.eclipse.ui.IPartListener2#partDeactivated(IWorkbenchPartReference)}
+	 * if the passed part is the currently active part according to the part
+	 * service. This method should only be called in the case of workbench shutdown,
+	 * where E4 does not fire deactivate listeners on the active part.
 	 */
 	public void firePartDeactivatedIfActive(MPart part) {
 		if (partService.getActivePart() == part) {

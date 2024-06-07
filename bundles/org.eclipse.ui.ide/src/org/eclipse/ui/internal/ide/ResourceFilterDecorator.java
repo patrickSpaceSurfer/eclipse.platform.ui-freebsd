@@ -31,9 +31,6 @@ public class ResourceFilterDecorator implements ILightweightLabelDecorator {
 	private static final String IMG_MARKERS_RESOURCE_FILTER_DECORATION_PATH = "ovr16/filterapplied_ovr.png"; //$NON-NLS-1$
 	ImageDescriptor descriptorImage = null;
 
-	/**
-	 *
-	 */
 	public ResourceFilterDecorator() {
 		descriptorImage = IDEWorkbenchPlugin
 				.getIDEImageDescriptor(IMG_MARKERS_RESOURCE_FILTER_DECORATION_PATH);
@@ -42,7 +39,7 @@ public class ResourceFilterDecorator implements ILightweightLabelDecorator {
 	@Override
 	public void decorate(Object element, IDecoration decoration) {
 
-		if (element instanceof IContainer == false) {
+		if (!(element instanceof IContainer)) {
 			return;
 		}
 		IContainer container = (IContainer) element;

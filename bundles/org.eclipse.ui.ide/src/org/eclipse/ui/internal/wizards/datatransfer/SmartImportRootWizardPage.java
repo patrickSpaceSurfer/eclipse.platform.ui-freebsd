@@ -107,7 +107,6 @@ import org.osgi.framework.FrameworkUtil;
  * user a basic choice of how to import (import raw, infer sub- projects...)
  *
  * @since 3.12
- *
  */
 public class SmartImportRootWizardPage extends WizardPage {
 
@@ -181,7 +180,7 @@ public class SmartImportRootWizardPage extends WizardPage {
 		public String getText(Object o) {
 			File file = (File) o;
 			Path filePath = file.toPath();
-			Path rootPath = getWizard().getImportJob().getRoot().toPath();
+			Path rootPath = getWizard().createOrGetConfiguredImportJob().getRoot().toPath();
 			if (filePath.startsWith(rootPath)) {
 				Path parent = rootPath.getParent();
 				if (parent != null) {
@@ -363,9 +362,6 @@ public class SmartImportRootWizardPage extends WizardPage {
 		this.workingSetsGroup = new WorkingSetGroup(workingSetComposite, wsSel, workingSetIds);
 	}
 
-	/**
-	 * @param parent
-	 */
 	private void createInputSelectionOptions(Composite parent) {
 		Label rootDirectoryLabel = new Label(parent, SWT.NONE);
 		rootDirectoryLabel.setText(DataTransferMessages.SmartImportWizardPage_selectRootDirectory);
@@ -539,9 +535,6 @@ public class SmartImportRootWizardPage extends WizardPage {
 
 	}
 
-	/**
-	 * @param res
-	 */
 	private Composite createProposalsGroup(Composite parent) {
 		Composite res = new Composite(parent, SWT.NONE);
 		GridLayoutFactory.fillDefaults().numColumns(2).applyTo(res);
@@ -562,8 +555,7 @@ public class SmartImportRootWizardPage extends WizardPage {
 		tree.setContentProvider(new ITreeContentProvider() {
 			@Override
 			public Object[] getElements(Object inputElement) {
-				Map<File, ?> potentialProjects = (Map<File, ?>) inputElement;
-				return potentialProjects.keySet().toArray(new File[potentialProjects.size()]);
+				return ((Map<File, ?>) inputElement).keySet().toArray(File[]::new);
 			}
 
 			@Override
@@ -746,9 +738,9 @@ public class SmartImportRootWizardPage extends WizardPage {
 
 	@Override
 	public boolean isPageComplete() {
-		return sourceIsValid() && getWizard().getImportJob() != null
-				&& (getWizard().getImportJob().getDirectoriesToImport() == null
-						|| !getWizard().getImportJob().getDirectoriesToImport().isEmpty());
+		return sourceIsValid() && getWizard().createOrGetConfiguredImportJob() != null
+				&& (getWizard().createOrGetConfiguredImportJob().getDirectoriesToImport() == null
+						|| !getWizard().createOrGetConfiguredImportJob().getDirectoriesToImport().isEmpty());
 	}
 
 	private boolean sourceIsValid() {
@@ -766,8 +758,6 @@ public class SmartImportRootWizardPage extends WizardPage {
 
 	/**
 	 * Sets the initial source to import.
-	 *
-	 * @param directoryOrArchive
 	 */
 	public void setInitialImportRoot(File directoryOrArchive) {
 		this.selection = directoryOrArchive;
@@ -795,10 +785,10 @@ public class SmartImportRootWizardPage extends WizardPage {
 	}
 
 	private void proposalsSelectionChanged() {
-		if (getWizard().getImportJob() != null) {
+		if (getWizard().createOrGetConfiguredImportJob() != null) {
 			if (potentialProjects.size() == 1 && potentialProjects.values().iterator().next().isEmpty()) {
-				getWizard().getImportJob().setDirectoriesToImport(null);
-				getWizard().getImportJob().setExcludedDirectories(null);
+				getWizard().createOrGetConfiguredImportJob().setDirectoriesToImport(null);
+				getWizard().createOrGetConfiguredImportJob().setExcludedDirectories(null);
 
 				selectionSummary.setText(NLS.bind(DataTransferMessages.SmartImportProposals_selectionSummary,
 						directoriesToImport.size(), 1));
@@ -807,8 +797,8 @@ public class SmartImportRootWizardPage extends WizardPage {
 				for (File directory : this.directoriesToImport) {
 					excludedDirectories.remove(directory);
 				}
-				getWizard().getImportJob().setDirectoriesToImport(directoriesToImport);
-				getWizard().getImportJob().setExcludedDirectories(excludedDirectories);
+				getWizard().createOrGetConfiguredImportJob().setDirectoriesToImport(directoriesToImport);
+				getWizard().createOrGetConfiguredImportJob().setExcludedDirectories(excludedDirectories);
 				selectionSummary.setText(NLS.bind(DataTransferMessages.SmartImportProposals_selectionSummary,
 						directoriesToImport.size(),
 						potentialProjects.size()));
@@ -847,7 +837,7 @@ public class SmartImportRootWizardPage extends WizardPage {
 			TreeItem computingItem = new TreeItem(tree.getTree(), SWT.DEFAULT);
 			computingItem
 					.setText(NLS.bind(DataTransferMessages.SmartImportJob_inspecting, selection.getAbsolutePath()));
-			final SmartImportJob importJob = getWizard().getImportJob();
+			final SmartImportJob importJob = getWizard().createOrGetConfiguredImportJob();
 			refreshProposalsJob = new Job(
 					NLS.bind(DataTransferMessages.SmartImportJob_inspecting, selection.getAbsolutePath())) {
 				@Override
@@ -889,7 +879,7 @@ public class SmartImportRootWizardPage extends WizardPage {
 							IStatus result = event.getResult();
 							if (!control.isDisposed() && result.isOK()) {
 								computingItem.dispose();
-								if (sourceIsValid() && getWizard().getImportJob() == importJob) {
+								if (sourceIsValid() && getWizard().createOrGetConfiguredImportJob() == importJob) {
 									proposalsUpdated();
 								}
 								tree.getTree().setEnabled(potentialProjects.size() > 1);

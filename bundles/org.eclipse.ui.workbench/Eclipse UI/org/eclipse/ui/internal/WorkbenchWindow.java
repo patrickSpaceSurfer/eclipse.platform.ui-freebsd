@@ -815,11 +815,7 @@ public class WorkbenchWindow implements IWorkbenchWindow {
 			fireWindowOpening();
 			configureShell(getShell(), windowContext);
 
-			try {
-				page = new WorkbenchPage(this, input);
-			} catch (WorkbenchException e) {
-				WorkbenchPlugin.log(e);
-			}
+			page = new WorkbenchPage(this, input);
 			menuOverride = new MenuOverrides(page);
 			toolbarOverride = new ToolbarOverrides(page);
 
@@ -1854,10 +1850,6 @@ public class WorkbenchWindow implements IWorkbenchWindow {
 
 	/**
 	 * Fires perspective changed
-	 *
-	 * @param page
-	 * @param perspective
-	 * @param changeId
 	 */
 	public void firePerspectiveChanged(IWorkbenchPage page, IPerspectiveDescriptor perspective, String changeId) {
 		// Some callers call this even when there is no active perspective.
@@ -1870,11 +1862,6 @@ public class WorkbenchWindow implements IWorkbenchWindow {
 
 	/**
 	 * Fires perspective changed for an affected part
-	 *
-	 * @param page
-	 * @param perspective
-	 * @param partRef
-	 * @param changeId
 	 */
 	public void firePerspectiveChanged(IWorkbenchPage page, IPerspectiveDescriptor perspective,
 			IWorkbenchPartReference partRef, String changeId) {

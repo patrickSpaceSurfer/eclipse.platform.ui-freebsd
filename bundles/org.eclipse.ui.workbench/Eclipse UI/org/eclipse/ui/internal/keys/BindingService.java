@@ -290,7 +290,7 @@ public final class BindingService implements IBindingService {
 
 		// weeds out any of the deleted system bindings using the binding
 		// manager
-		HashSet<Binding> activeBindings = new HashSet<Binding>(manager.getActiveBindingsDisregardingContextFlat());
+		HashSet<Binding> activeBindings = new HashSet<>(manager.getActiveBindingsDisregardingContextFlat());
 
 		// get all of the (active) model bindings that point to the actual runtime
 		// bindings
@@ -482,11 +482,6 @@ public final class BindingService implements IBindingService {
 		return result;
 	}
 
-	/**
-	 * @param id
-	 * @param rootContext
-	 * @return
-	 */
 	private MBindingContext searchContexts(String id, List<MBindingContext> rootContext) {
 		for (MBindingContext context : rootContext) {
 			if (context.getElementId().equals(id)) {
@@ -518,10 +513,6 @@ public final class BindingService implements IBindingService {
 		createOrUpdateMKeyBinding(application, table, binding);
 	}
 
-	/**
-	 * @param contextId
-	 * @return
-	 */
 	private MBindingTable getMTable(String contextId) {
 		for (MBindingTable bt : application.getBindingTables()) {
 			if (bt.getBindingContext().getElementId().equals(contextId)) {
@@ -613,7 +604,6 @@ public final class BindingService implements IBindingService {
 			keyBinding.setKeySequence(binding.getTriggerSequence().toString());
 
 			for (Object obj : parmCmd.getParameterMap().entrySet()) {
-				@SuppressWarnings({ "unchecked" })
 				Map.Entry<String, String> entry = (Map.Entry<String, String>) obj;
 
 				String paramID = entry.getKey();

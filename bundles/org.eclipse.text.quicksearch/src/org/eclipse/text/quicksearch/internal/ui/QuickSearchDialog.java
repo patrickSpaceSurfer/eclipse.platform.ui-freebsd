@@ -555,7 +555,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	/**
 	 * Create a new header which is labelled by headerLabel.
 	 *
-	 * @param parent
 	 * @return Label the label of the header
 	 */
 	private Label createHeader(Composite parent) {
@@ -593,7 +592,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	/**
 	 * Create the labels for the list and the progress. Return the list label.
 	 *
-	 * @param parent
 	 * @return Label
 	 */
 	private Label createLabels(Composite parent) {
@@ -1270,6 +1268,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	 */
 	protected void applyFilter(boolean force) {
 		QuickTextQuery newFilter = createFilter();
+		getShell().setText(Messages.QuickSearchDialog_title + " - " + pattern.getText()); //$NON-NLS-1$
 		if (this.searcher==null) {
 			if (!newFilter.isTrivial()) {
 				//Create the QuickTextSearcher with the inital query.
@@ -1357,8 +1356,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 
 		/**
 		 * Adds filtered item.
-		 *
-		 * @param match
 		 */
 		public void add(LineItem match) {
 			this.items.add(match);
@@ -1422,7 +1419,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 
 	/**
 	 * Get the control where the search pattern is entered. Any filtering should
-	 * be done using an {@link ItemsFilter}. This control should only be
+	 * be done using an {@code ItemsFilter}. This control should only be
 	 * accessed for listeners that wish to handle events that do not affect
 	 * filtering such as custom traversal.
 	 *

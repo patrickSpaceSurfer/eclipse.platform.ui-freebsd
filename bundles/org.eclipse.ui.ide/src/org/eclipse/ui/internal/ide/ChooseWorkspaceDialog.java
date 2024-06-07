@@ -17,6 +17,9 @@ package org.eclipse.ui.internal.ide;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -58,7 +61,10 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.DirectoryDialog;
+import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Monitor;
@@ -76,6 +82,8 @@ import org.osgi.framework.FrameworkUtil;
  */
 public class ChooseWorkspaceDialog extends TitleAreaDialog {
 
+	private static final String TILDE = "~"; //$NON-NLS-1$
+
 	private static final String OPEN_FOLDER_EMOJI = new String(
 			new byte[] { (byte) 0xF0, (byte) 0x9F, (byte) 0x93, (byte) 0x82 }, StandardCharsets.UTF_8);
 
@@ -83,7 +91,7 @@ public class ChooseWorkspaceDialog extends TitleAreaDialog {
 
 	private ChooseWorkspaceData launchData;
 
-	private Combo text;
+	private Combo pathCombo;
 
 	private boolean suppressAskAgain = false;
 
@@ -94,6 +102,7 @@ public class ChooseWorkspaceDialog extends TitleAreaDialog {
 	private Form recentWorkspacesForm;
 
 	private Button defaultButton;
+
 
 	/**
 	 * Create a modal dialog on the argument shell, using and updating the
@@ -252,8 +261,6 @@ public class ChooseWorkspaceDialog extends TitleAreaDialog {
 
 	/**
 	 * Set the selected workspace to the given String and close the dialog
-	 *
-	 * @param workspace
 	 */
 	private void workspaceSelected(String workspace) {
 		launchData.workspaceSelected(TextProcessor.deprocess(workspace));
@@ -262,10 +269,8 @@ public class ChooseWorkspaceDialog extends TitleAreaDialog {
 
 	/**
 	 * Removes the workspace from RecentWorkspaces
-	 *
-	 * @param workspace
 	 */
-	private void removeWorkspaceFromLauncher(String workspace) {
+	private void removeWorkspaceFromLauncher(String workspace, Combo combo) {
 		// Remove Workspace from Properties
 		List<String> recentWorkpaces = new ArrayList<>(Arrays.asList(launchData.getRecentWorkspaces()));
 		recentWorkpaces.remove(workspace);
@@ -280,10 +285,10 @@ public class ChooseWorkspaceDialog extends TitleAreaDialog {
 		getShell().layout();
 		initializeBounds();
 		// Remove Workspace from combobox
-		text.remove(workspace);
-		if (text.getText().equals(workspace) || text.getText().isEmpty()) {
-			text.setText(TextProcessor
-					.process((text.getItemCount() > 0 ? text.getItem(0) : launchData.getInitialDefault())));
+		combo.remove(workspace);
+		if (combo.getText().equals(workspace) || combo.getText().isEmpty()) {
+			combo.setText(TextProcessor
+					.process((combo.getItemCount() > 0 ? combo.getItem(0) : launchData.getInitialDefault())));
 		}
 	}
 
@@ -292,7 +297,7 @@ public class ChooseWorkspaceDialog extends TitleAreaDialog {
 	 * @return String
 	 */
 	protected String getWorkspaceLocation() {
-		return text.getText();
+		return getCombo().getText();
 	}
 
 	@Override
@@ -365,7 +370,7 @@ public class ChooseWorkspaceDialog extends TitleAreaDialog {
 			forgetItem.addSelectionListener(new SelectionAdapter() {
 				@Override
 				public void widgetSelected(SelectionEvent e) {
-					removeWorkspaceFromLauncher(recentWorkspace);
+					removeWorkspaceFromLauncher(recentWorkspace, getCombo());
 				}
 			});
 			link.setMenu(menu);
@@ -430,11 +435,72 @@ public class ChooseWorkspaceDialog extends TitleAreaDialog {
 	protected Control createWorkspaceBrowseRow(Composite parent) {
 		Composite panel = createBrowseComposite(parent);
 
-		createPathCombo(panel);
-
-		createBrowseButton(panel);
-
+		pathCombo = createPathCombo(panel);
+		createBrowseButton(panel, pathCombo);
+		setInitialTextValues(pathCombo);
+		Label label = new Label(parent, SWT.LEAD);
+		GridData gd = new GridData(GridData.FILL_HORIZONTAL);
+		gd.horizontalIndent = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_MARGIN);
+		label.setLayoutData(gd);
+		pathCombo.addModifyListener(e -> {
+			String hint = getUnexpectedPathHint();
+			label.setText(hint);
+			boolean empty = hint.isEmpty();
+			if (empty != gd.exclude) {
+				label.setVisible(!empty);
+				gd.exclude = empty;
+				parent.layout();
+			}
+		});
+		Listener[] listeners = pathCombo.getListeners(SWT.Modify);
+		Event event = new Event();
+		event.type = SWT.Modify;
+		event.widget = pathCombo;
+		for (Listener listener : listeners) {
+			listener.handleEvent(event);
+		}
 		return panel;
+	}
+
+	protected String getUnexpectedPathHint() {
+		String workspaceLocation = getWorkspaceLocation();
+		if (!workspaceLocation.isBlank()) {
+			File location = new File(workspaceLocation);
+			Path path;
+			try {
+				path = location.getAbsoluteFile().toPath();
+			} catch (InvalidPathException e) {
+				return NLS.bind(IDEWorkbenchMessages.ChooseWorkspaceDialog_InvalidPathWarning, e.getReason());
+			}
+			String normalisedPath = path.normalize().toString();
+			String normalisedPathWithSeperator = normalisedPath + File.separator;
+			if (!isWritable(path)) {
+				return NLS.bind(IDEWorkbenchMessages.ChooseWorkspaceDialog_NotWriteablePathWarning, normalisedPath);
+			}
+			if (normalisedPathWithSeperator.contains(TILDE)) {
+				return NLS.bind(IDEWorkbenchMessages.ChooseWorkspaceDialog_TildeNonExpandedWarning, normalisedPath);
+			}
+			if (!workspaceLocation.equalsIgnoreCase(normalisedPath)
+					&& !workspaceLocation.equalsIgnoreCase(normalisedPathWithSeperator)) {
+				return NLS.bind(IDEWorkbenchMessages.ChooseWorkspaceDialog_ResolvedAbsolutePath, normalisedPath);
+			}
+		}
+		return ""; //$NON-NLS-1$
+	}
+
+	/**
+	 * @param path
+	 * @return
+	 */
+	private boolean isWritable(Path path) {
+		if (Files.exists(path)) {
+			return Files.isWritable(path);
+		}
+		Path parent = path.getParent();
+		if (parent != null) {
+			return isWritable(parent);
+		}
+		return true;
 	}
 
 	protected Composite createBrowseComposite(Composite parent) {
@@ -451,12 +517,12 @@ public class ChooseWorkspaceDialog extends TitleAreaDialog {
 	}
 
 	protected Combo createPathCombo(Composite panel) {
-		text = new Combo(panel, SWT.BORDER | SWT.LEAD | SWT.DROP_DOWN);
-		new DirectoryProposalContentAssist().apply(text);
-		text.setTextDirection(SWT.AUTO_TEXT_DIRECTION);
-		text.setFocus();
-		text.setLayoutData(new GridData(400, SWT.DEFAULT));
-		text.addModifyListener(e -> {
+		Combo combo = new Combo(panel, SWT.BORDER | SWT.LEAD | SWT.DROP_DOWN);
+		new DirectoryProposalContentAssist().apply(combo);
+		combo.setTextDirection(SWT.AUTO_TEXT_DIRECTION);
+		combo.setFocus();
+		combo.setLayoutData(new GridData(400, SWT.DEFAULT));
+		combo.addModifyListener(e -> {
 			Button okButton = getButton(Window.OK);
 			if(okButton != null && !okButton.isDisposed()) {
 				boolean nonWhitespaceFound = false;
@@ -467,14 +533,25 @@ public class ChooseWorkspaceDialog extends TitleAreaDialog {
 						nonWhitespaceFound = true;
 					}
 				}
-				okButton.setEnabled(nonWhitespaceFound);
+				okButton.setEnabled(nonWhitespaceFound && isValidPath(characters));
 			}
 		});
-		setInitialTextValues(text);
-		return text;
+		return combo;
 	}
 
-	protected Button createBrowseButton(Composite panel) {
+	/**
+	 * @param characters
+	 * @return
+	 */
+	private boolean isValidPath(String path) {
+		try {
+			return isWritable(new File(path).toPath());
+		} catch (InvalidPathException e) {
+			return false;
+		}
+	}
+
+	protected Button createBrowseButton(Composite panel, Combo combo) {
 		Button browseButton = new Button(panel, SWT.PUSH);
 		browseButton.setText(IDEWorkbenchMessages.ChooseWorkspaceDialog_browseLabel);
 		browseButton.setToolTipText(IDEWorkbenchMessages.ChooseWorkspaceDialog_browseTooltip);
@@ -489,7 +566,7 @@ public class ChooseWorkspaceDialog extends TitleAreaDialog {
 				dialog.setFilterPath(getInitialBrowsePath());
 				String dir = dialog.open();
 				if (dir != null) {
-					text.setText(TextProcessor.process(dir));
+					combo.setText(TextProcessor.process(dir));
 				}
 			}
 		});
@@ -616,7 +693,7 @@ public class ChooseWorkspaceDialog extends TitleAreaDialog {
 	 * @return Combo
 	 */
 	public Combo getCombo() {
-		return text;
+		return pathCombo;
 	}
 
 	/**

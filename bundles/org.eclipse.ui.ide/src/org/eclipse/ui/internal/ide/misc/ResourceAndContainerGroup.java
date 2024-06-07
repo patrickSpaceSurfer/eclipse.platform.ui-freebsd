@@ -338,7 +338,7 @@ public class ResourceAndContainerGroup implements Listener {
 		String resource = resourceNameField.getText();
 		if ((resourceExtension != null) && (resourceExtension.length() > 0)
 				&& (resource.length() > 0)
-				&& (resource.endsWith('.' + resourceExtension) == false)) {
+				&& !resource.endsWith('.' + resourceExtension)) {
 			return true;
 		}
 		return false;
@@ -374,7 +374,6 @@ public class ResourceAndContainerGroup implements Listener {
 
 	/**
 	 * Sets the flag indicating whether existing resources are permitted.
-	 * @param value
 	 */
 	public void setAllowExistingResources(boolean value) {
 		allowExistingResources = value;

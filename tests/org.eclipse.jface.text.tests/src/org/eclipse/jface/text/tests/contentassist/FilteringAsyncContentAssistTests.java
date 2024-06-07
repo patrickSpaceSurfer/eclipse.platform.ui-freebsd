@@ -56,7 +56,6 @@ import org.eclipse.jface.text.tests.util.DisplayHelper;
  * Tests for Async completion proposal popup proposals filtering mechanics
  *
  * @author Alex Boyko
- *
  */
 public class FilteringAsyncContentAssistTests {
 
@@ -652,7 +651,6 @@ public class FilteringAsyncContentAssistTests {
 		}
 	}
 
-	@SuppressWarnings("boxing")
 	private static boolean isSubstringFoundOrderedInString(String subString, String string) {
 		int lastIndex = 0;
 		subString = subString.toLowerCase();

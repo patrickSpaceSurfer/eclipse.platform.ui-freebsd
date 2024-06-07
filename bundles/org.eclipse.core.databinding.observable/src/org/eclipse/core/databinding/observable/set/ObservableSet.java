@@ -39,7 +39,6 @@ import org.eclipse.core.databinding.observable.Realm;
  *            the type of elements in this collection
  *
  * @since 1.0
- *
  */
 public abstract class ObservableSet<E> extends AbstractObservable implements
 		IObservableSet<E> {
@@ -111,7 +110,7 @@ public abstract class ObservableSet<E> extends AbstractObservable implements
 	public Iterator<E> iterator() {
 		getterCalled();
 		final Iterator<E> wrappedIterator = wrappedSet.iterator();
-		return new Iterator<E>() {
+		return new Iterator<>() {
 
 			@Override
 			public void remove() {

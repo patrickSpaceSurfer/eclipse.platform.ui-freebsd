@@ -1376,7 +1376,7 @@ public class TestHarnessImpl extends ApplicationElementImpl implements
 				return getVariables();
 			case MTestPackage.TEST_HARNESS__PROPERTIES:
 				if (coreType) return ((EMap.InternalMapView<String, String>)getProperties()).eMap();
-				else return getProperties();
+				return getProperties();
 			case MTestPackage.TEST_HARNESS__CONTRIBUTION_URI:
 				return getContributionURI();
 			case MTestPackage.TEST_HARNESS__OBJECT:
@@ -2026,36 +2026,6 @@ public class TestHarnessImpl extends ApplicationElementImpl implements
 		result.append(dirty);
 		result.append(')');
 		return result.toString();
-	}
-
-	public String getLocalLabel() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public void setLocalLabel(String value) {
-		// TODO Auto-generated method stub
-
-	}
-
-	public String getLocalTooltip() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public void setLocalTooltip(String value) {
-		// TODO Auto-generated method stub
-
-	}
-
-	public Object getLocalImage() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public void setLocalImage(Object value) {
-		// TODO Auto-generated method stub
-
 	}
 
 } // TestHarnessImpl

@@ -19,10 +19,9 @@ package org.eclipse.e4.ui.css.core.utils;
 public class ClassUtils {
 
 	/**
-	 * Return the simple name of Class <code>c</code>.
-	 *
-	 * @param c
-	 * @return
+	 * @param c the class for what a simple name is to be returned
+	 * @return a simple name of Class <code>c</code>. For inner classes, the hyphen
+	 *         is used, e.g., for Outer$Inner, the return value is "Outer-Inner"
 	 */
 	public static String getSimpleName(Class<?> c) {
 		String name = c.getName();
@@ -31,20 +30,21 @@ public class ClassUtils {
 			name = name.substring(index + 1, name.length());
 		}
 
-		return name.replace('$', '-');
+		return name.replace('$', '-').intern();
 	}
 
 	/**
 	 * Return the package name of Class <code>c</code>.
 	 *
-	 * @param c
-	 * @return
+	 * @param c the class for what a simple name is to be returned
+	 * @return the package name, if this class represents an array type, a primitive
+	 *         type or void, this method returns <code>null</code>.
 	 */
 	public static String getPackageName(Class<?> c) {
 		String name = c.getName();
 		int index = name.lastIndexOf('.');
 		if (index > 0) {
-			return name.substring(0, index);
+			return name.substring(0, index).intern();
 		}
 		return null;
 	}

@@ -25,9 +25,6 @@ import org.eclipse.core.runtime.content.IContentDescription;
 
 import org.eclipse.core.resources.IFile;
 
-/**
- *
- */
 public class FileCharSequenceProvider {
 
 	/**
@@ -294,8 +291,10 @@ public class FileCharSequenceProvider {
 						int bytesRead= 0;
 						do {
 							int bytes= contents.read(bomStore, bytesRead, bomLength - bytesRead);
-							if (bytes == -1)
+							if (bytes == -1) {
+								contents.close();
 								throw new IOException();
+							}
 							bytesRead += bytes;
 						} while (bytesRead < bomLength);
 

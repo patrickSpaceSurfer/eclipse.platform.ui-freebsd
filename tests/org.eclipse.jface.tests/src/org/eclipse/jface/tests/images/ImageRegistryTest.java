@@ -39,6 +39,7 @@ public class ImageRegistryTest {
 		assertNull("Registry should handle null", result);
 	}
 
+	@SuppressWarnings("removal")
 	@Test
 	public void testGetString() {
 
@@ -65,7 +66,6 @@ public class ImageRegistryTest {
 	 * images so we know that the code using them can rely on them.
 	 *
 	 * Note that they can be <code>null</code> from SWT.
-	 *
 	 */
 	@Test
 	public void testGetIconMessageDialogImages() {

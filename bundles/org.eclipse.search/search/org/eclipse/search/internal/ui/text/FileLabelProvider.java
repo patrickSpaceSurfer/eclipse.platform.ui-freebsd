@@ -19,11 +19,11 @@ package org.eclipse.search.internal.ui.text;
 import java.util.Arrays;
 import java.util.Comparator;
 
-import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
 
 import org.eclipse.core.resources.IResource;
 
+import org.eclipse.jface.util.Util;
 import org.eclipse.jface.viewers.DelegatingStyledCellLabelProvider.IStyledLabelProvider;
 import org.eclipse.jface.viewers.ILabelProviderListener;
 import org.eclipse.jface.viewers.LabelProvider;
@@ -87,8 +87,10 @@ public class FileLabelProvider extends LabelProvider implements IStyledLabelProv
 			return new StyledString();
 
 		IResource resource= (IResource) element;
-		if (!resource.exists())
-			new StyledString(SearchMessages.FileLabelProvider_removed_resource_label);
+		if (!resource.exists()) {
+			StyledString str = new StyledString(SearchMessages.FileLabelProvider_removed_resource_label);
+			return getColoredLabelWithCounts(resource, str);
+		}
 
 		String name= BasicElementLabels.getResourceName(resource);
 		if (fOrder == SHOW_LABEL) {
@@ -184,7 +186,7 @@ public class FileLabelProvider extends LabelProvider implements IStyledLabelProv
 
 
 	private int getCharsToCut(int contentLength, Match[] matches) {
-		if (contentLength <= 256 || !"win32".equals(SWT.getPlatform()) || matches.length == 0) { //$NON-NLS-1$
+		if (contentLength <= 256 || !Util.isWin32() || matches.length == 0) {
 			return 0; // no shortening required
 		}
 		// XXX: workaround for https://bugs.eclipse.org/bugs/show_bug.cgi?id=38519

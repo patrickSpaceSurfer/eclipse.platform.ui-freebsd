@@ -2,7 +2,7 @@
 <feature
       id="org.eclipse.e4.rcp"
       label="%featureName"
-      version="4.30.0.qualifier"
+      version="4.32.0.qualifier"
       provider-name="%providerName"
       license-feature="org.eclipse.license"
       license-feature-version="0.0.0">
@@ -179,10 +179,6 @@
          version="0.0.0"/>
 
    <plugin
-         id="org.eclipse.osgi.services"
-         version="0.0.0"/>
-
-   <plugin
          id="org.eclipse.osgi.util"
          version="0.0.0"/>
 
@@ -234,6 +230,13 @@
          version="0.0.0"/>
 
    <plugin
+         id="org.eclipse.equinox.launcher.win32.win32.aarch64"
+         os="win32"
+         ws="win32"
+         arch="aarch64"
+         version="0.0.0"/>
+
+   <plugin
          id="org.eclipse.equinox.launcher.win32.win32.x86_64"
          os="win32"
          ws="win32"
@@ -242,6 +245,13 @@
 
    <plugin
          id="org.eclipse.swt"
+         version="0.0.0"/>
+
+   <plugin
+         id="org.eclipse.swt.win32.win32.aarch64"
+         os="win32"
+         ws="win32"
+         arch="aarch64"
          version="0.0.0"/>
 
    <plugin

@@ -163,7 +163,7 @@ public class WorkspaceUndoUtil {
 	 *
 	 * @param resourcesToDelete
 	 *            an array of resources to be deleted
-	 * @param monitor
+	 * @param mon
 	 *            the progress monitor to use to show the operation's progress
 	 * @param uiInfo
 	 *            the IAdaptable (or <code>null</code>) provided by the
@@ -353,8 +353,7 @@ public class WorkspaceUndoUtil {
 							iterationProgress.split(1),
 							uiInfo, false);
 					iterationProgress.setWorkRemaining(100);
-					if ((createLinks || createVirtual) && (source.isLinked() == false)
-							&& (source.isVirtual() == false)) {
+					if ((createLinks || createVirtual) && !source.isLinked() && !source.isVirtual()) {
 						IFolder folder = workspaceRoot.getFolder(destinationPath);
 						if (createVirtual) {
 							folder.create(IResource.VIRTUAL, true, iterationProgress.split(1));
@@ -377,8 +376,7 @@ public class WorkspaceUndoUtil {
 			} else {
 				if (existing != null) {
 					// source is a FILE and destination EXISTS
-					if ((createLinks || createVirtual)
-							&& (source.isLinked() == false)) {
+					if ((createLinks || createVirtual) && !source.isLinked()) {
 						// we create a linked file, and overwrite the
 						// destination
 						IResourceSnapshot<? extends IResource>[] deleted = delete(
@@ -440,8 +438,7 @@ public class WorkspaceUndoUtil {
 						parentPath = destination.removeLastSegments(1);
 					}
 					IContainer generatedParent = generateContainers(parentPath);
-					if ((createLinks || createVirtual)
-							&& (source.isLinked() == false)) {
+					if ((createLinks || createVirtual) && !source.isLinked()) {
 						if (source.getType() == IResource.FILE) {
 							IFile file = workspaceRoot.getFile(destinationPath);
 							file.createLink(createRelativePath(
@@ -485,8 +482,6 @@ public class WorkspaceUndoUtil {
 	 * "C:\foo\bar\file.txt" to "VAR\file.txt" granted that the relativeVariable
 	 * is "VAR" and points to "C:\foo\bar\").
 	 *
-	 * @param locationURI
-	 * @param resource
 	 * @return an URI that was made relative to a variable
 	 */
 	static private URI createRelativePath(URI locationURI, String relativeVariable, IResource resource) {

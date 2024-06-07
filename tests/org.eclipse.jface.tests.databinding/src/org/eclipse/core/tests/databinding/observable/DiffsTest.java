@@ -22,7 +22,6 @@ import org.junit.Test;
 
 /**
  * @since 3.2
- *
  */
 public class DiffsTest {
 	/**
@@ -31,7 +30,7 @@ public class DiffsTest {
 	 */
 	@Test
 	public void test_SetDiff() {
-		SetDiff<?> diff = new SetDiff<Object>() {
+		SetDiff<?> diff = new SetDiff<>() {
 			@Override
 			public Set<Object> getAdditions() {
 				return null;
@@ -49,11 +48,10 @@ public class DiffsTest {
 	/**
 	 * Asserts that if the {@link ValueDiff#toString()} implementation doesn't
 	 * throw a NPE if any of its properties are <code>null</code>.
-	 *
 	 */
 	@Test
 	public void test_ValueDiff() {
-		ValueDiff<?> diff = new ValueDiff<Object>() {
+		ValueDiff<?> diff = new ValueDiff<>() {
 			@Override
 			public Object getNewValue() {
 				return null;

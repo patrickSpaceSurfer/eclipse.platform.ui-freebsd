@@ -129,7 +129,6 @@ public final class IDE {
 	 *  }
 	 * </code>
 	 * </pre>
-	 *
 	 */
 	public static final QualifiedName EDITOR_KEY = new QualifiedName(
 			"org.eclipse.ui.internal.registry.ResourceEditorRegistry", "EditorProperty");//$NON-NLS-2$//$NON-NLS-1$
@@ -220,7 +219,6 @@ public final class IDE {
 		 * </p>
 		 *
 		 * @see org.eclipse.ui.IWorkbenchPreferenceConstants#OPEN_PERSPECTIVE_WINDOW
-		 * @see org.eclipse.ui.IWorkbenchPreferenceConstants#OPEN_PERSPECTIVE_PAGE
 		 * @see org.eclipse.ui.IWorkbenchPreferenceConstants#OPEN_PERSPECTIVE_REPLACE
 		 * @see org.eclipse.ui.IWorkbenchPreferenceConstants#NO_NEW_PERSPECTIVE
 		 */

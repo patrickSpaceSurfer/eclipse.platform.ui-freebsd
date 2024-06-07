@@ -121,7 +121,7 @@ public class PathVariableDialog extends TitleAreaDialog {
 	 * Set of variable names currently in use. Used when warning the user that
 	 * the currently selected name is already in use by another variable.
 	 */
-	private Set namesInUse;
+	private Set<String> namesInUse;
 
 	/**
 	 * The current validation status. Its value can be one of the following:<ul>
@@ -581,7 +581,7 @@ public class PathVariableDialog extends TitleAreaDialog {
 		}
 		// only set the message here if it is not going to be set in
 		// validateVariableValue to avoid flashing.
-		if (allowFinish == false) {
+		if (!allowFinish) {
 			setMessage(validationMessage, validationStatus);
 		}
 		return allowFinish;
@@ -704,16 +704,10 @@ public class PathVariableDialog extends TitleAreaDialog {
 		variableValue = userEditableString;
 	}
 
-	/**
-	 * @param resource
-	 */
 	public void setResource(IResource resource) {
 		currentResource = resource;
 	}
 
-	/**
-	 * @param location
-	 */
 	public void setLinkLocation(IPath location) {
 		String userEditableString = getPathVariableManager().convertToUserEditableFormat(location.toOSString(), operationMode == EDIT_LINK_LOCATION);
 		variableValue = userEditableString;

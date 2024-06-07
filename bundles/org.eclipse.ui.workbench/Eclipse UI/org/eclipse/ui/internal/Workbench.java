@@ -139,6 +139,7 @@ import org.eclipse.jface.util.Util;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.window.IShellProvider;
 import org.eclipse.jface.window.Window;
+import org.eclipse.osgi.internal.location.LocationHelper;
 import org.eclipse.osgi.service.runnable.StartupMonitor;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.SWT;
@@ -189,7 +190,6 @@ import org.eclipse.ui.application.WorkbenchAdvisor;
 import org.eclipse.ui.browser.IWorkbenchBrowserSupport;
 import org.eclipse.ui.commands.ICommandImageService;
 import org.eclipse.ui.commands.ICommandService;
-import org.eclipse.ui.commands.IWorkbenchCommandSupport;
 import org.eclipse.ui.contexts.IContextService;
 import org.eclipse.ui.contexts.IWorkbenchContextSupport;
 import org.eclipse.ui.handlers.IHandlerService;
@@ -202,7 +202,6 @@ import org.eclipse.ui.internal.browser.WorkbenchBrowserSupport;
 import org.eclipse.ui.internal.commands.CommandImageManager;
 import org.eclipse.ui.internal.commands.CommandImageService;
 import org.eclipse.ui.internal.commands.CommandService;
-import org.eclipse.ui.internal.commands.WorkbenchCommandSupport;
 import org.eclipse.ui.internal.contexts.ActiveContextSourceProvider;
 import org.eclipse.ui.internal.contexts.ContextService;
 import org.eclipse.ui.internal.contexts.WorkbenchContextSupport;
@@ -264,11 +263,11 @@ import org.eclipse.ui.views.IViewDescriptor;
 import org.eclipse.ui.views.IViewRegistry;
 import org.eclipse.ui.wizards.IWizardRegistry;
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.BundleEvent;
 import org.osgi.framework.Constants;
 import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.ServiceEvent;
+import org.osgi.framework.ServiceListener;
 import org.osgi.framework.ServiceRegistration;
-import org.osgi.framework.SynchronousBundleListener;
 import org.osgi.util.tracker.ServiceTracker;
 
 /**
@@ -290,14 +289,10 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 
 	public static final String EDITOR_TAG = "Editor"; //$NON-NLS-1$
 
-	private static final String PROP_VM = "eclipse.vm"; //$NON-NLS-1$
-	private static final String PROP_VMARGS = "eclipse.vmargs"; //$NON-NLS-1$
-	private static final String PROP_COMMANDS = "eclipse.commands"; //$NON-NLS-1$
 	public static final String PROP_EXIT_CODE = "eclipse.exitcode"; //$NON-NLS-1$
 	private static final String CMD_DATA = "-data"; //$NON-NLS-1$
-	private static final String CMD_VMARGS = "-vmargs"; //$NON-NLS-1$
 
-	private static final class StartupProgressBundleListener implements SynchronousBundleListener {
+	private static final class StartupProgressBundleListener implements ServiceListener {
 
 		private final SubMonitor subMonitor;
 		private Display displayForStartupListener;
@@ -309,13 +304,9 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 		}
 
 		@Override
-		public void bundleChanged(BundleEvent event) {
-			int eventType = event.getType();
-			if (eventType == BundleEvent.STARTED) {
-				subMonitor.setWorkRemaining(5).worked(1);
-				spinEventQueueToUpdateSplash(displayForStartupListener);
-
-			}
+		public void serviceChanged(ServiceEvent event) {
+			subMonitor.setWorkRemaining(5).worked(1);
+			spinEventQueueToUpdateSplash(displayForStartupListener);
 		}
 	}
 
@@ -608,7 +599,7 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 						properties);
 
 				// listener for updating the splash screen
-				SynchronousBundleListener bundleListener = null;
+				ServiceListener serviceListener = null;
 				createSplash = WorkbenchPlugin.isSplashHandleSpecified();
 				if (createSplash) {
 
@@ -630,8 +621,8 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 
 					if (handler != null && showProgress) {
 						IProgressMonitor progressMonitor = SubMonitor.convert(handler.getBundleProgressMonitor());
-						bundleListener = new Workbench.StartupProgressBundleListener(progressMonitor, display);
-						WorkbenchPlugin.getDefault().addBundleListener(bundleListener);
+						serviceListener = new Workbench.StartupProgressBundleListener(progressMonitor, display);
+						WorkbenchPlugin.getDefault().getBundleContext().addServiceListener(serviceListener);
 					}
 
 				}
@@ -642,8 +633,8 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 
 				if (returnCode[0] == PlatformUI.RETURN_OK) {
 					// run the e4 event loop and instantiate ... well, stuff
-					if (bundleListener != null) {
-						WorkbenchPlugin.getDefault().removeBundleListener(bundleListener);
+					if (serviceListener != null) {
+						WorkbenchPlugin.getDefault().getBundleContext().removeServiceListener(serviceListener);
 					}
 					e4Workbench.createAndRunUI(e4Workbench.getApplication());
 				}
@@ -687,7 +678,7 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 		return (IApplicationContext) instanceAppContext.getService();
 	}
 
-	static Object getApplication(String[] args) {
+	static Object getApplication(@SuppressWarnings("unused") String[] args) {
 		// Find the name of the application as specified by the PDE JUnit
 		// launcher.
 		// If no application is specified, the 3.0 default workbench application
@@ -854,7 +845,7 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 		if (splashLoc != null) {
 			try (InputStream input = new BufferedInputStream(new FileInputStream(splashLoc))) {
 				background = getImage(display, input);
-			} catch (SWTException | IOException e) {
+			} catch (SWTException | IOException | NumberFormatException e) {
 				StatusManager.getManager().handle(StatusUtil.newStatus(WorkbenchPlugin.PI_WORKBENCH, e));
 			}
 		}
@@ -870,7 +861,7 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 			 * (https://github.com/eclipse-platform/eclipse.platform.swt/issues/772) ,Splash
 			 * Screen gets flipped.As a workaround the image is flipped and returned.
 			 */
-			if (System.getProperty("os.version").startsWith("14")) { //$NON-NLS-1$ //$NON-NLS-2$
+			if (Integer.parseInt(System.getProperty("os.version").split("\\.")[0]) >= 14) { //$NON-NLS-1$ //$NON-NLS-2$
 				GC gc = new GC(image);
 				Transform tr = new Transform(display);
 				tr.setElements(1, 0, 0, -1, 0, 0);
@@ -1486,7 +1477,14 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 				windowWhileInit = getActiveWorkbenchWindow();
 
 				if (newWindow) {
-					Point size = result.getWindowConfigurer().getInitialSize();
+					WorkbenchWindowConfigurer windowConfigurer;
+					WorkbenchWindow existingWindow = (WorkbenchWindow) windowWhileInit;
+					if (existingWindow != null) {
+						windowConfigurer = existingWindow.getWindowConfigurer();
+					} else {
+						windowConfigurer = result.getWindowConfigurer();
+					}
+					Point size = windowConfigurer.getInitialSize();
 					window.setWidth(size.x);
 					window.setHeight(size.y);
 
@@ -1774,9 +1772,6 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 		return true;
 	}
 
-	/**
-	 *
-	 */
 	private void initializeWorkbenchImages() {
 		StartupThreading.runWithoutExceptions(new StartupRunnable() {
 			@Override
@@ -2209,11 +2204,6 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 		return result;
 	}
 
-	/**
-	 * @param id
-	 * @param rootContext
-	 * @return
-	 */
 	private MBindingContext searchContexts(String id, List<MBindingContext> rootContext) {
 		for (MBindingContext context : rootContext) {
 			if (context.getElementId().equals(id)) {
@@ -2241,8 +2231,6 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 	}
 
 	/**
-	 * @param bindingTables
-	 * @param id
 	 * @return true if this BT already exists
 	 */
 	private boolean contains(List<MBindingTable> bindingTables, String id) {
@@ -2423,8 +2411,6 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 			}
 		});
 		workbenchContextSupport = new WorkbenchContextSupport(this, contextManager);
-		workbenchCommandSupport = new WorkbenchCommandSupport(bindingManager, commandManager, contextManager,
-				handlerService[0]);
 		initializeCommandResolver();
 
 		bindingManager.addBindingManagerListener(bindingManagerListener);
@@ -2536,12 +2522,12 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 			// fall back to starting without showing progress.
 			runnable.run();
 		} else {
-			SynchronousBundleListener bundleListener = new StartupProgressBundleListener(progressMonitor, display);
-			WorkbenchPlugin.getDefault().addBundleListener(bundleListener);
+			ServiceListener serviceListener = new StartupProgressBundleListener(progressMonitor, display);
+			WorkbenchPlugin.getDefault().getBundleContext().addServiceListener(serviceListener);
 			try {
 				runnable.run();
 			} finally {
-				WorkbenchPlugin.getDefault().removeBundleListener(bundleListener);
+				WorkbenchPlugin.getDefault().getBundleContext().removeServiceListener(serviceListener);
 			}
 		}
 	}
@@ -2574,7 +2560,11 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 
 	@Override
 	public boolean restart(boolean useCurrrentWorkspace) {
-		if (useCurrrentWorkspace) {
+		if (Platform.inDevelopmentMode()) {
+			// In development mode, command line parameters cannot be changed and restart
+			// will always be EXIT_RESTART. Also see setRestartArguments method
+			System.setProperty(PROP_EXIT_CODE, IApplication.EXIT_RESTART.toString());
+		} else if (useCurrrentWorkspace) {
 			URL instanceUrl = Platform.getInstanceLocation().getURL();
 			if (instanceUrl != null) {
 				try {
@@ -2603,64 +2593,16 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 	 *         is not set
 	 */
 	private static String buildCommandLine(String workspace) {
-		String property = System.getProperty(PROP_VM);
-		if (property == null) {
-			if (!Platform.inDevelopmentMode()) {
-				// Don't log this when in development mode, since 'eclipse.vm'
-				// is never set in this case
-				WorkbenchPlugin.log(NLS.bind(WorkbenchMessages.Workbench_missingPropertyMessage, PROP_VM));
-			}
-			return null;
-		}
-
 		StringBuilder result = new StringBuilder(512);
-		result.append(property);
+
+		String userData = System.getProperty(IApplicationContext.EXIT_DATA_PROPERTY);
+		if (userData != null && !userData.isBlank())
+			result.append(userData);
+
+		result.append(CMD_DATA);
 		result.append('\n');
-
-		// append the vmargs and commands. Assume that these already end in \n
-		String vmargs = System.getProperty(PROP_VMARGS);
-		if (vmargs != null) {
-			result.append(vmargs);
-		}
-
-		// append the rest of the args, replacing or adding -data as required
-		property = System.getProperty(PROP_COMMANDS);
-		if (property == null) {
-			result.append(CMD_DATA);
-			result.append('\n');
-			result.append(workspace);
-			result.append('\n');
-		} else {
-			// find the index of the arg to add/replace its value
-			int cmd_data_pos = property.lastIndexOf(CMD_DATA);
-			if (cmd_data_pos != -1) {
-				cmd_data_pos += CMD_DATA.length() + 1;
-				result.append(property.substring(0, cmd_data_pos));
-				result.append(workspace);
-				// append from the next arg
-				int nextArg = property.indexOf("\n-", cmd_data_pos - 1); //$NON-NLS-1$
-				if (nextArg != -1) {
-					result.append(property.substring(nextArg));
-				}
-			} else {
-				result.append(CMD_DATA);
-				result.append('\n');
-				result.append(workspace);
-				result.append('\n');
-				result.append(property);
-			}
-		}
-
-		// put the vmargs back at the very end (the eclipse.commands property
-		// already contains the -vm arg)
-		if (vmargs != null) {
-			if (result.charAt(result.length() - 1) != '\n') {
-				result.append('\n');
-			}
-			result.append(CMD_VMARGS);
-			result.append('\n');
-			result.append(vmargs);
-		}
+		result.append(workspace);
+		result.append('\n');
 
 		return result.toString();
 	}
@@ -2672,13 +2614,15 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 	 * @param workspacePath the new workspace location
 	 * @return {@link IApplication#EXIT_OK} or {@link IApplication#EXIT_RELAUNCH}
 	 */
+	@SuppressWarnings("restriction")
 	public static Object setRestartArguments(String workspacePath) {
-		String property = System.getProperty(Workbench.PROP_VM);
-		if (property == null) {
+		if (Platform.inDevelopmentMode()
+				&& !Platform.getInstanceLocation().getURL().equals(LocationHelper.buildURL(workspacePath, true))) {
 			MessageDialog.openError(null, WorkbenchMessages.Workbench_problemsRestartErrorTitle,
-					NLS.bind(WorkbenchMessages.Workbench_problemsRestartErrorMessage, Workbench.PROP_VM));
-			return IApplication.EXIT_OK;
+					WorkbenchMessages.Workbench_problemsRestartErrorMessage);
+			return null;
 		}
+
 		String command_line = Workbench.buildCommandLine(workspacePath);
 		if (command_line == null) {
 			return IApplication.EXIT_OK;
@@ -3177,8 +3121,6 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 
 	private WorkbenchActivitySupport workbenchActivitySupport;
 
-	private WorkbenchCommandSupport workbenchCommandSupport;
-
 	private WorkbenchContextSupport workbenchContextSupport;
 
 	/**
@@ -3214,11 +3156,6 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 	@Override
 	public IWorkbenchActivitySupport getActivitySupport() {
 		return e4Context.get(IWorkbenchActivitySupport.class);
-	}
-
-	@Override
-	public IWorkbenchCommandSupport getCommandSupport() {
-		return workbenchCommandSupport;
 	}
 
 	@Override
@@ -3478,8 +3415,6 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 	 *
 	 * @param menuIds          The identifiers of the menu that is now showing; must
 	 *                         not be <code>null</code>.
-	 * @param localSelection
-	 * @param localEditorInput
 	 */
 	public void addShowingMenus(final Set menuIds, final ISelection localSelection, final ISelection localEditorInput) {
 		menuSourceProvider.addShowingMenus(menuIds, localSelection, localEditorInput);
@@ -3496,8 +3431,6 @@ public final class Workbench extends EventManager implements IWorkbench, org.ecl
 	 *
 	 * @param menuIds          The identifiers of the menu that is now hidden; must
 	 *                         not be <code>null</code>.
-	 * @param localSelection
-	 * @param localEditorInput
 	 */
 	public void removeShowingMenus(final Set menuIds, final ISelection localSelection,
 			final ISelection localEditorInput) {

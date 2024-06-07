@@ -18,7 +18,7 @@ package org.eclipse.e4.ui.tests.css.swt;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 
-import org.eclipse.e4.ui.css.swt.dom.CTabFolderElement;
+import org.eclipse.e4.ui.css.swt.dom.WidgetElement;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
@@ -96,7 +96,6 @@ public class CTabFolderTest extends CSSSWTTestCase {
 		return shell;
 	}
 
-	@SuppressWarnings("restriction")
 	protected Label createLabelInCTabFolder(String styleSheet) {
 		engine = createEngine(styleSheet, display);
 
@@ -287,7 +286,6 @@ public class CTabFolderTest extends CSSSWTTestCase {
 		assertEquals(null, engine.retrieveCSSProperty(shell, "swt-maximized", null));
 		assertEquals(null, engine.retrieveCSSProperty(shell, "swt-maximize-visible", null));
 		assertEquals(null, engine.retrieveCSSProperty(shell, "swt-minimize-visible", null));
-		assertEquals(null, engine.retrieveCSSProperty(shell, "show-close", null));
 		assertEquals(null, engine.retrieveCSSProperty(shell, "swt-simple", null));
 		assertEquals(null, engine.retrieveCSSProperty(shell, "swt-single", null));
 		assertEquals(null, engine.retrieveCSSProperty(shell, "swt-unselected-close-visible", null));
@@ -306,14 +304,14 @@ public class CTabFolderTest extends CSSSWTTestCase {
 		ToolBar barB = toolBars[1];
 		ToolBar barC = toolBars[2];
 
-		CTabFolderElement.setCSSClass(barA.getParent(), "special");
+		WidgetElement.setCSSClass(barA.getParent(), "special");
 		engine.applyStyles(barA.getShell(), true);
 
 		assertEquals(RED, barA.getBackground().getRGB());
 		assertEquals(GREEN, barB.getBackground().getRGB());
 		assertEquals(BLUE, barC.getBackground().getRGB());
 
-		CTabFolderElement.setCSSClass(barA.getParent(), "extraordinary");
+		WidgetElement.setCSSClass(barA.getParent(), "extraordinary");
 		engine.applyStyles(barA.getShell(), true);
 
 		assertEquals(WHITE, barA.getBackground().getRGB());
@@ -323,5 +321,25 @@ public class CTabFolderTest extends CSSSWTTestCase {
 	void testStyleLabelChildInCTabFolder() {
 		Label labelToTest = createLabelInCTabFolder("Label { background-color: #0000FF; }\n");
 		assertEquals(BLUE, labelToTest.getBackground().getRGB());
+	}
+
+	@Test
+	void testSelectedImageVisible() {
+		CTabFolder folderToTest = createTestCTabFolder("CTabFolder { swt-selected-image-visible: true}");
+		assertEquals(true, folderToTest.getSelectedImageVisible());
+		assertEquals("true", engine.retrieveCSSProperty(folderToTest, "swt-selected-image-visible", null));
+		folderToTest = createTestCTabFolder("CTabFolder { swt-selected-image-visible: false}");
+		assertEquals(false, folderToTest.getSelectedImageVisible());
+		assertEquals("false", engine.retrieveCSSProperty(folderToTest, "swt-selected-image-visible", null));
+	}
+
+	@Test
+	void testMinimumCharacters() {
+		CTabFolder folderToTest = createTestCTabFolder("CTabFolder { swt-tab-text-minimum-characters: 1}");
+		assertEquals(1, folderToTest.getMinimumCharacters());
+		assertEquals("1", engine.retrieveCSSProperty(folderToTest, "swt-tab-text-minimum-characters", null));
+		folderToTest = createTestCTabFolder("CTabFolder { swt-tab-text-minimum-characters: 1.2}");
+		assertEquals(1, folderToTest.getMinimumCharacters());
+		assertEquals("1", engine.retrieveCSSProperty(folderToTest, "swt-tab-text-minimum-characters", null));
 	}
 }

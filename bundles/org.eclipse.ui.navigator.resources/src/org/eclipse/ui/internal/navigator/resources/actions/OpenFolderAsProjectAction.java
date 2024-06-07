@@ -53,17 +53,12 @@ import org.eclipse.ui.navigator.CommonViewer;
 
 /**
  * @since 3.3
- *
  */
 public class OpenFolderAsProjectAction extends Action {
 
 	private final Collection<IFolder> folders;
 	private final CommonViewer viewer;
 
-	/**
-	 * @param folder
-	 * @param viewer
-	 */
 	public OpenFolderAsProjectAction(Collection<IFolder> folder, CommonViewer viewer) {
 		super(folder.size() > 1 //
 				? WorkbenchNavigatorMessages.OpenProjectAction_OpenExistingProjects //
@@ -75,17 +70,13 @@ public class OpenFolderAsProjectAction extends Action {
 				PlatformUI.getWorkbench().getSharedImages().getImageDescriptor(SharedImages.IMG_OBJ_PROJECT));
 	}
 
-	/**
-	 * @param folder
-	 * @param viewer
-	 */
 	public OpenFolderAsProjectAction(IFolder folder, CommonViewer viewer) {
 		this(Collections.singleton(folder), viewer);
 	}
 
 	@Override
 	public void run() {
-		List<IProject> imported = new LinkedList<IProject>();
+		List<IProject> imported = new LinkedList<>();
 		JobGroup group = new JobGroup(WorkbenchNavigatorMessages.OpenProjectAction_multiple, 0, folders.size());
 		Job.getJobManager().addJobChangeListener(new GroupFinishedListener(group,
 				() -> reflectChanges(imported, folders.stream().map(IFolder::getParent).distinct().toList())));

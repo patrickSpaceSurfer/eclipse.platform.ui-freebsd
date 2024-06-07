@@ -54,9 +54,8 @@ import org.eclipse.ui.views.markers.internal.MarkerType;
  * MarkerFieldFilterGroup is the representation of a grouping of marker filters.
  *
  * @since 3.4
- *
  */
-class MarkerFieldFilterGroup {
+public class MarkerFieldFilterGroup {
 
 	private static final String ATTRIBUTE_ON_ANY_IN_SAME_CONTAINER = "ON_ANY_IN_SAME_CONTAINER";//$NON-NLS-1$
 	private static final String ATTRIBUTE_ON_SELECTED_AND_CHILDREN = "ON_SELECTED_AND_CHILDREN";//$NON-NLS-1$
@@ -64,7 +63,6 @@ class MarkerFieldFilterGroup {
 
 	/**
 	 * The attribute values for the scope
-	 *
 	 */
 
 	private static final String ATTRIBUTE_SCOPE = "scope"; //$NON-NLS-1$
@@ -75,25 +73,25 @@ class MarkerFieldFilterGroup {
 	/**
 	 * Constant for any element.
 	 */
-	static final int ON_ANY = 0;
+	public static final int ON_ANY = 0;
 
 	/**
 	 * Constant for any element in same container.
 	 */
-	static final int ON_ANY_IN_SAME_CONTAINER = 3;
+	public static final int ON_ANY_IN_SAME_CONTAINER = 3;
 
 	/**
 	 * Constant for selected element and children.
 	 */
-	static final int ON_SELECTED_AND_CHILDREN = 2;
+	public static final int ON_SELECTED_AND_CHILDREN = 2;
 	/**
 	 * Constant for any selected element only.
 	 */
-	static final int ON_SELECTED_ONLY = 1;
+	public static final int ON_SELECTED_ONLY = 1;
 	/**
 	 * Constant for on working set.
 	 */
-	static final int ON_WORKING_SET = 4;
+	public static final int ON_WORKING_SET = 4;
 
 	static final String TAG_ENABLED = "enabled"; //$NON-NLS-1$
 	private static final String TAG_SCOPE = "scope"; //$NON-NLS-1$
@@ -121,9 +119,6 @@ class MarkerFieldFilterGroup {
 
 	/**
 	 * Create a new instance of the receiver.
-	 *
-	 * @param configurationElement
-	 * @param markerBuilder
 	 */
 	public MarkerFieldFilterGroup(IConfigurationElement configurationElement, MarkerContentGenerator markerBuilder) {
 		element = configurationElement;
@@ -195,7 +190,6 @@ class MarkerFieldFilterGroup {
 	 * Return the MarkerFieldFilter for field or <code>null</code> if there
 	 * isn't one.
 	 *
-	 * @param field
 	 * @return MarkerFieldFilter
 	 */
 	public MarkerFieldFilter getFilter(MarkerField field) {
@@ -280,7 +274,6 @@ class MarkerFieldFilterGroup {
 	 * @see #ON_SELECTED_ONLY
 	 * @see #ON_WORKING_SET
 	 */
-	@SuppressWarnings("javadoc")
 	public int getScope() {
 		return scope;
 	}
@@ -335,7 +328,6 @@ class MarkerFieldFilterGroup {
 
 	/**
 	 * Return true if the resource is in the working set
-	 * @param resource
 	 * @return boolean
 	 */
 	private boolean isInWorkingSet(IResource resource) {
@@ -389,8 +381,6 @@ class MarkerFieldFilterGroup {
 
 	/**
 	 * Load the settings from the legacy child.
-	 *
-	 * @param memento
 	 */
 	void legacyLoadSettings(IMemento memento) {
 
@@ -496,8 +486,6 @@ class MarkerFieldFilterGroup {
 
 	/**
 	 * Populate the clone and return true if successful.
-	 *
-	 * @param clone
 	 */
 	protected boolean populateClone(MarkerFieldFilterGroup clone) {
 		clone.scope = this.scope;
@@ -545,8 +533,6 @@ class MarkerFieldFilterGroup {
 
 	/**
 	 * Save the settings for the receiver in the memento.
-	 *
-	 * @param memento
 	 */
 	void saveFilterSettings(IMemento memento) {
 		memento.putString(TAG_ENABLED, String.valueOf(enabled));
@@ -613,8 +599,6 @@ class MarkerFieldFilterGroup {
 
 	/**
 	 * Set the name of the receiver.
-	 *
-	 * @param newName
 	 */
 	public void setName(String newName) {
 		name = newName;
@@ -623,8 +607,6 @@ class MarkerFieldFilterGroup {
 
 	/**
 	 * Set the scope of the receiver.
-	 *
-	 * @param newScope
 	 */
 	public void setScope(int newScope) {
 		scope = newScope;
@@ -632,8 +614,6 @@ class MarkerFieldFilterGroup {
 
 	/**
 	 * Set the working set of the receiver.
-	 *
-	 * @param workingSet
 	 */
 	void setWorkingSet(IWorkingSet workingSet) {
 		this.workingSet = workingSet;

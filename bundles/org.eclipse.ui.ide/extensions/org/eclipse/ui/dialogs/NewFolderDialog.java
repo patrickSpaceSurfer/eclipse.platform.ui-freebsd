@@ -143,7 +143,7 @@ public class NewFolderDialog extends SelectionStatusDialog {
 	protected void createAdvancedControls(Composite parent) {
 		Preferences preferences = ResourcesPlugin.getPlugin().getPluginPreferences();
 
-		if (preferences.getBoolean(ResourcesPlugin.PREF_DISABLE_LINKING) == false && isValidContainer()) {
+		if (!preferences.getBoolean(ResourcesPlugin.PREF_DISABLE_LINKING) && isValidContainer()) {
 			linkedResourceParent = new Composite(parent, SWT.NONE);
 			linkedResourceParent.setFont(parent.getFont());
 			linkedResourceParent.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
@@ -331,7 +331,7 @@ public class NewFolderDialog extends SelectionStatusDialog {
 
 			for (String natureId : natureIds) {
 				IProjectNatureDescriptor descriptor = workspace.getNatureDescriptor(natureId);
-				if (descriptor != null && descriptor.isLinkingAllowed() == false) {
+				if (descriptor != null && !descriptor.isLinkingAllowed()) {
 					return false;
 				}
 			}
@@ -362,9 +362,6 @@ public class NewFolderDialog extends SelectionStatusDialog {
 	/**
 	 * Update the dialog's status line to reflect the given status. It is safe to
 	 * call this method before the dialog has been opened.
-	 *
-	 * @param severity
-	 * @param message
 	 */
 	private void updateStatus(int severity, String message) {
 		updateStatus(new Status(severity, IDEWorkbenchPlugin.IDE_WORKBENCH, severity, message, null));
@@ -388,7 +385,7 @@ public class NewFolderDialog extends SelectionStatusDialog {
 				getOkButton().setEnabled(false);
 			}
 
-			if (status.isOK() == false) {
+			if (!status.isOK()) {
 				updateStatus(status);
 			}
 		} else {
@@ -411,7 +408,7 @@ public class NewFolderDialog extends SelectionStatusDialog {
 			updateStatus(IStatus.ERROR, IDEWorkbenchMessages.NewFolderDialog_folderNameEmpty);
 			return false;
 		}
-		if (nameStatus.isOK() == false) {
+		if (!nameStatus.isOK()) {
 			updateStatus(nameStatus);
 			return false;
 		}

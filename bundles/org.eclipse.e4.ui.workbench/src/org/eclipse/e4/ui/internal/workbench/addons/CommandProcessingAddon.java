@@ -23,11 +23,11 @@ import java.util.List;
 import org.eclipse.core.commands.Category;
 import org.eclipse.core.commands.Command;
 import org.eclipse.core.commands.CommandManager;
-import org.eclipse.core.commands.CommandManagerEvent;
 import org.eclipse.core.commands.ICommandManagerListener;
 import org.eclipse.core.commands.IParameter;
 import org.eclipse.core.commands.ParameterType;
 import org.eclipse.core.commands.common.NotDefinedException;
+import org.eclipse.core.runtime.ILog;
 import org.eclipse.e4.core.commands.ECommandService;
 import org.eclipse.e4.core.commands.internal.HandlerServiceImpl;
 import org.eclipse.e4.core.services.events.IEventBroker;
@@ -70,11 +70,7 @@ public class CommandProcessingAddon {
 	private ICommandManagerListener cmListener;
 
 	/**
-	 * @param cmd
-	 * @param modelService
-	 * @param categoryModel
 	 * @return a command model element
-	 * @throws NotDefinedException
 	 */
 	public static MCommand createCommand(Command cmd, EModelService modelService,
 			final MCategory categoryModel) throws NotDefinedException {
@@ -147,30 +143,25 @@ public class CommandProcessingAddon {
 	}
 
 	private void registerCommandListener() {
-		cmListener = new ICommandManagerListener() {
-			@SuppressWarnings("restriction")
-			@Override
-			public void commandManagerChanged(CommandManagerEvent commandManagerEvent) {
-				if (commandManagerEvent.isCommandChanged()) {
-					if (commandManagerEvent.isCommandDefined()) {
-						final String commandId = commandManagerEvent.getCommandId();
-						if (findCommand(commandId) != null) {
-							return;
-						}
-						final Command command = commandManagerEvent.getCommandManager().getCommand(
-								commandId);
-						if (command.getHandler() == null) {
-							command.setHandler(HandlerServiceImpl.getHandler(commandId));
-						}
-						try {
-							MCategory categoryModel = findCategory(command.getCategory().getId());
-							final MCommand createdCommand = createCommand(command, modelService,
-									categoryModel);
-							application.getCommands().add(createdCommand);
-						} catch (NotDefinedException e) {
-							Activator.getDefault().getLogService()
-									.log(0, "Failed to create command " + commandId, e); //$NON-NLS-1$
-						}
+		cmListener = commandManagerEvent -> {
+			if (commandManagerEvent.isCommandChanged()) {
+				if (commandManagerEvent.isCommandDefined()) {
+					final String commandId = commandManagerEvent.getCommandId();
+					if (findCommand(commandId) != null) {
+						return;
+					}
+					final Command command = commandManagerEvent.getCommandManager().getCommand(
+							commandId);
+					if (command.getHandler() == null) {
+						command.setHandler(HandlerServiceImpl.getHandler(commandId));
+					}
+					try {
+						MCategory categoryModel = findCategory(command.getCategory().getId());
+						final MCommand createdCommand = createCommand(command, modelService,
+								categoryModel);
+						application.getCommands().add(createdCommand);
+					} catch (NotDefinedException e) {
+						ILog.get().error("Failed to create command " + commandId, e); //$NON-NLS-1$
 					}
 				}
 			}

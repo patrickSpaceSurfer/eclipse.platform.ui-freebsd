@@ -51,6 +51,7 @@ import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.text.Position;
 import org.eclipse.jface.viewers.DelegatingStyledCellLabelProvider.IStyledLabelProvider;
+import org.eclipse.jface.viewers.ILabelProvider;
 import org.eclipse.jface.viewers.ILabelProviderListener;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -84,7 +85,6 @@ import org.eclipse.ui.internal.ide.IDEWorkbenchMessages;
 import org.eclipse.ui.internal.ide.IIDEHelpContextIds;
 import org.eclipse.ui.internal.ide.model.ResourceFactory;
 import org.eclipse.ui.model.WorkbenchLabelProvider;
-import org.eclipse.jface.viewers.ILabelProvider;
 import org.eclipse.ui.statushandlers.StatusManager;
 import org.osgi.framework.FrameworkUtil;
 
@@ -374,7 +374,7 @@ public class FilteredResourcesSelectionDialog extends FilteredItemsSelectionDial
 		if (result == null)
 			return null;
 
-		List resultToReturn = new ArrayList();
+		List<Object> resultToReturn = new ArrayList<>();
 
 		for (Object element : result) {
 			if (element instanceof IResource) {
@@ -526,7 +526,6 @@ public class FilteredResourcesSelectionDialog extends FilteredItemsSelectionDial
 	}
 
 	/**
-	 * @param pattern
 	 * @return the first character from the given string which <em>could</em> be
 	 *         considered a part of a file name. Returns <code>0</code> if there is
 	 *         no such character found.
@@ -924,14 +923,9 @@ public class FilteredResourcesSelectionDialog extends FilteredItemsSelectionDial
 
 		/**
 		 * Creates new ResourceProxyVisitor instance.
-		 *
-		 * @param contentProvider
-		 * @param resourceFilter
-		 * @param progressMonitor
-		 * @throws CoreException
 		 */
 		public ResourceProxyVisitor(AbstractContentProvider contentProvider, ResourceFilter resourceFilter,
-				IProgressMonitor progressMonitor) throws CoreException {
+				IProgressMonitor progressMonitor) {
 			super();
 			this.proxyContentProvider = contentProvider;
 			this.resourceFilter = resourceFilter;
@@ -1020,10 +1014,8 @@ public class FilteredResourcesSelectionDialog extends FilteredItemsSelectionDial
 		/**
 		 * Creates new ResourceFilter instance
 		 *
-		 * @param container
 		 * @param searchContainer IContainer to use for performing relative search
 		 * @param showDerived     flag which determine showing derived elements
-		 * @param typeMask
 		 * @since 3.6
 		 */
 		private ResourceFilter(IContainer container, IContainer searchContainer, boolean showDerived, int typeMask) {
@@ -1044,26 +1036,26 @@ public class FilteredResourcesSelectionDialog extends FilteredItemsSelectionDial
 					if (filenamePattern.isEmpty()) // relative patterns don't need a file name
 						filenamePattern = "**"; //$NON-NLS-1$
 
-					String containerPattern = stringPattern.substring(isMatchPrefix(stringPattern) ? 1 : 0, sep);
+					String newContainerPattern = stringPattern.substring(isMatchPrefix(stringPattern) ? 1 : 0, sep);
 
 					if (searchContainer != null) {
 						relativeContainerPattern = new SearchPattern(
 								SearchPattern.RULE_EXACT_MATCH | SearchPattern.RULE_PATTERN_MATCH);
 						relativeContainerPattern
-								.setPattern(searchContainer.getFullPath().append(containerPattern).toString());
+								.setPattern(searchContainer.getFullPath().append(newContainerPattern).toString());
 					}
 
-					if (!containerPattern.startsWith(Character.toString('*'))) {
+					if (!newContainerPattern.startsWith(Character.toString('*'))) {
 						// bug 552418 - make the search always "root less", so that users don't need to
 						// type the initial "*/"
-						if (!containerPattern.startsWith(Character.toString(IPath.SEPARATOR))) {
-							containerPattern = IPath.SEPARATOR + containerPattern;
+						if (!newContainerPattern.startsWith(Character.toString(IPath.SEPARATOR))) {
+							newContainerPattern = IPath.SEPARATOR + newContainerPattern;
 						}
-						containerPattern = '*' + containerPattern;
+						newContainerPattern = '*' + newContainerPattern;
 					}
 					this.containerPattern = new SearchPattern(SearchPattern.RULE_EXACT_MATCH
 							| SearchPattern.RULE_PREFIX_MATCH | SearchPattern.RULE_PATTERN_MATCH);
-					this.containerPattern.setPattern(containerPattern);
+					this.containerPattern.setPattern(newContainerPattern);
 				}
 				if (isMatchPrefix(stringPattern)) {
 					filenamePattern = '>' + filenamePattern;
@@ -1211,7 +1203,7 @@ public class FilteredResourcesSelectionDialog extends FilteredItemsSelectionDial
 
 	}
 
-	private class FilterResourcesByLocation extends ViewerFilter {
+	private static class FilterResourcesByLocation extends ViewerFilter {
 
 		private boolean enabled;
 
@@ -1250,7 +1242,7 @@ public class FilteredResourcesSelectionDialog extends FilteredItemsSelectionDial
 	 * <code>ResourceSelectionHistory</code> provides behavior specific to resources
 	 * - storing and restoring <code>IResource</code>s state to/from XML (memento).
 	 */
-	private class ResourceSelectionHistory extends SelectionHistory {
+	private static class ResourceSelectionHistory extends SelectionHistory {
 
 		@Override
 		protected Object restoreItemFromMemento(IMemento element) {

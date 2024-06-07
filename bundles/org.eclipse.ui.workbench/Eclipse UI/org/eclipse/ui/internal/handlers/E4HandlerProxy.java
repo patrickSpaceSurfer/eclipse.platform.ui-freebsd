@@ -50,7 +50,6 @@ import org.eclipse.ui.menus.UIElement;
 
 /**
  * @since 3.5
- *
  */
 public class E4HandlerProxy implements IHandler2, IHandlerListener, IElementUpdater, IObjectWithState {
 	public HandlerActivation activation;
@@ -147,7 +146,7 @@ public class E4HandlerProxy implements IHandler2, IHandlerListener, IElementUpda
 	}
 
 	@Override
-	public Object execute(ExecutionEvent event) throws ExecutionException {
+	public Object execute(ExecutionEvent event) {
 		if (logExecute) {
 			logExecute = false;
 			Status status = new Status(IStatus.WARNING, "org.eclipse.ui", //$NON-NLS-1$
@@ -225,6 +224,11 @@ public class E4HandlerProxy implements IHandler2, IHandlerListener, IElementUpda
 		if (handler instanceof IObjectWithState) {
 			((IObjectWithState) handler).removeState(stateId);
 		}
+	}
+
+	@Override
+	public String getHandlerLabel() {
+		return handler.getHandlerLabel();
 	}
 
 }

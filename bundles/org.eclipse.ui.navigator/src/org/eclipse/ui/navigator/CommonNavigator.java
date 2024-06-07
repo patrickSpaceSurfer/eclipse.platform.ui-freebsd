@@ -134,11 +134,10 @@ public class CommonNavigator extends ViewPart implements ISetSelectionTarget, IS
 
 	/**
 	 * <p>
-	 * Used to track changes to the {@link #isLinkingEnabled}&nbsp;property.
+	 * Used to track changes to {@link #isLinkingEnabled()}.
 	 * </p>
 	 *
 	 * Make sure this does not conflict with anything in IWorkbenchPartConstants.
-	 *
 	 */
 	public static final int IS_LINKING_ENABLED_PROPERTY = 0x10000;
 
@@ -161,9 +160,6 @@ public class CommonNavigator extends ViewPart implements ISetSelectionTarget, IS
 
 	private LinkHelperService linkService;
 
-	/**
-	 *
-	 */
 	public CommonNavigator() {
 		super();
 	}
@@ -287,7 +283,6 @@ public class CommonNavigator extends ViewPart implements ISetSelectionTarget, IS
 	 * @param anElement element to get text for
 	 * @return the tool tip text
 	 * @since 3.4
-	 *
 	 */
 	public String getFrameToolTipText(Object anElement) {
 		if (commonViewer == null)

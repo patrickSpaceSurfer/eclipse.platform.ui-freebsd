@@ -58,23 +58,17 @@ import org.osgi.framework.FrameworkUtil;
  * {@link ProjectConfigurator}
  *
  * @since 3.12
- *
  */
 public class SmartImportWizard extends Wizard implements IImportWizard {
 
 	/**
 	 * Expands an archive onto provided filesystem directory
 	 * @since 3.12
-	 *
 	 */
 	private static final class ExpandArchiveIntoFilesystemOperation implements IRunnableWithProgress {
 		private File archive;
 		private File destination;
 
-		/**
-		 * @param archive
-		 * @param destination
-		 */
 		private ExpandArchiveIntoFilesystemOperation(File archive, File destination) {
 			this.archive = archive;
 			this.destination = destination;
@@ -145,9 +139,6 @@ public class SmartImportWizard extends Wizard implements IImportWizard {
 	 */
 	private File directoryToImport;
 
-	/**
-	 *
-	 */
 	public SmartImportWizard() {
 		super();
 		setNeedsProgressMonitor(true);
@@ -165,8 +156,6 @@ public class SmartImportWizard extends Wizard implements IImportWizard {
 
 	/**
 	 * Sets the initial directory or archive to import in workspace.
-	 *
-	 * @param directoryOrArchive
 	 */
 	public void setInitialImportSource(File directoryOrArchive) {
 		this.initialSelection = directoryOrArchive;
@@ -174,8 +163,6 @@ public class SmartImportWizard extends Wizard implements IImportWizard {
 
 	/**
 	 * Sets the initial selected working sets for the wizard
-	 *
-	 * @param workingSets
 	 */
 	public void setInitialWorkingSets(Set<IWorkingSet> workingSets) {
 		this.initialWorkingSets = workingSets;
@@ -254,7 +241,7 @@ public class SmartImportWizard extends Wizard implements IImportWizard {
 			System.arraycopy(previousProposals, 0, newProposals, 1, previousProposals.length);
 			getDialogSettings().put(SmartImportRootWizardPage.IMPORTED_SOURCES, newProposals);
 		}
-		SmartImportJob job = getImportJob();
+		SmartImportJob job = createOrGetConfiguredImportJob();
 		boolean runInBackground = WorkbenchPlugin.getDefault().getPreferenceStore()
 				.getBoolean(IPreferenceConstants.RUN_IN_BACKGROUND);
 		job.setProperty(IProgressConstants.PROPERTY_IN_DIALOG, runInBackground);
@@ -263,12 +250,20 @@ public class SmartImportWizard extends Wizard implements IImportWizard {
 	}
 
 	/**
-	 * Get the import job that will be processed by this wizard. Can be null (if
-	 * provided directory is invalid).
+	 * Get or create the import job that will be processed by this wizard. Can be
+	 * <code>null</code> (if the provided directory is invalid).
 	 *
-	 * @return the import job
+	 * <strong>IMPORTANT:</strong> If there was already a job but it didn't match
+	 * the current configuration of the wizard then a new job will be created and
+	 * returned.
+	 *
+	 * Regardless of whether or not the job was created, some configurations will be
+	 * applied to it.
+	 *
+	 * @return the (newly created) import job
+	 * @see #getCurrentImportJob()
 	 */
-	public SmartImportJob getImportJob() {
+	public SmartImportJob createOrGetConfiguredImportJob() {
 		final File root = this.projectRootPage.getSelectedRoot();
 		if (root == null) {
 			return null;
@@ -283,16 +278,29 @@ public class SmartImportWizard extends Wizard implements IImportWizard {
 		} else {
 			return null;
 		}
+
 		if (this.easymportJob == null || !matchesPage(this.easymportJob, this.projectRootPage)) {
 			this.easymportJob = new SmartImportJob(this.directoryToImport, projectRootPage.getSelectedWorkingSets(),
 					projectRootPage.isConfigureProjects(), projectRootPage.isDetectNestedProject());
 		}
-		if (this.easymportJob != null) {
-			// always update working set on request as the job isn't updated on
-			// WS change automatically
-			this.easymportJob.setWorkingSets(projectRootPage.getSelectedWorkingSets());
-			this.easymportJob.setCloseProjectsAfterImport(projectRootPage.isCloseProjectsAfterImport());
-		}
+
+		// always update working set on request as the job isn't updated on
+		// WS change automatically
+		this.easymportJob.setWorkingSets(projectRootPage.getSelectedWorkingSets());
+		this.easymportJob.setCloseProjectsAfterImport(projectRootPage.isCloseProjectsAfterImport());
+
+		return this.easymportJob;
+	}
+
+	/**
+	 * Gets the current import job but it will not create it if it's
+	 * <code>null</code>. If you need to create the job based on the current
+	 * configuration of the wizard then you can call {@link #createOrGetConfiguredImportJob()}
+	 *
+	 * @return The current import job (it might be <code>null</code>).
+	 * @see #createOrGetConfiguredImportJob()
+	 */
+	public SmartImportJob getCurrentImportJob() {
 		return this.easymportJob;
 	}
 

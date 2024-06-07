@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
@@ -154,6 +155,7 @@ import org.eclipse.jface.text.ITextViewerExtension8;
 import org.eclipse.jface.text.ITextViewerExtension8.EnrichMode;
 import org.eclipse.jface.text.IUndoManager;
 import org.eclipse.jface.text.IUndoManagerExtension;
+import org.eclipse.jface.text.MultiTextSelection;
 import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.Region;
 import org.eclipse.jface.text.TabsToSpacesConverter;
@@ -291,7 +293,8 @@ public abstract class AbstractTextEditor extends EditorPart implements ITextEdit
 	protected static final String TAG_SELECTION_OFFSET= "selectionOffset"; //$NON-NLS-1$
 
 	/**
-	 * Tag used in the {@link IMemento} when saving and restoring the editor's selection length.
+	 * Tag used in the {@link IMemento} when saving and restoring the editor's
+	 * selection length.
 	 *
 	 * @see #saveState(IMemento)
 	 * @see #restoreState(IMemento)
@@ -1740,7 +1743,6 @@ public abstract class AbstractTextEditor extends EditorPart implements ITextEdit
 		 * {@inheritDoc}
 		 * <p>
 		 * Subclasses may extend this method.</p>
-		 *
 		 */
 		@Override
 		public void dispose() {
@@ -2276,6 +2278,8 @@ public abstract class AbstractTextEditor extends EditorPart implements ITextEdit
 
 	/** The width of the vertical ruler. */
 	protected static final int VERTICAL_RULER_WIDTH= 12;
+
+	private static final String DISABLE_CSS = "org.eclipse.e4.ui.css.disabled"; //$NON-NLS-1$
 
 	/**
 	 * The complete mapping between action definition IDs used by eclipse and StyledText actions.
@@ -3367,6 +3371,11 @@ public abstract class AbstractTextEditor extends EditorPart implements ITextEdit
 		int styles= SWT.V_SCROLL | SWT.H_SCROLL | SWT.MULTI | SWT.BORDER | SWT.FULL_SELECTION;
 		fSourceViewer= createSourceViewer(parent, fVerticalRuler, styles);
 
+		// We're managing our appearance from our preferences. Disable CSS styling.
+		// The CSS engine does set the editor preferences on theme switches, so we
+		// will pick up changes.
+		fSourceViewer.getTextWidget().setData(DISABLE_CSS, Boolean.TRUE);
+
 		if (fConfiguration == null)
 			fConfiguration= new SourceViewerConfiguration();
 		fSourceViewer.configure(fConfiguration);
@@ -4139,13 +4148,14 @@ public abstract class AbstractTextEditor extends EditorPart implements ITextEdit
 	 */
 	protected void doSetInput(IEditorInput input) throws CoreException {
 		ISaveablesLifecycleListener listener= getSite().getService(ISaveablesLifecycleListener.class);
-		if (listener == null)
+		if (listener == null) {
 			fSavable= null;
+		}
 
 		if (input == null) {
 			close(isSaveOnCloseNeeded());
 
-			if (fSavable != null) {
+			if (fSavable != null && listener != null) {
 				listener.handleLifecycleEvent(new SaveablesLifecycleEvent(this,	SaveablesLifecycleEvent.POST_CLOSE,	getSaveables(), false));
 				fSavable.disconnectEditor();
 				fSavable= null;
@@ -4153,7 +4163,7 @@ public abstract class AbstractTextEditor extends EditorPart implements ITextEdit
 
 		} else {
 			boolean mustSendLifeCycleEvent= false;
-			if (fSavable != null) {
+			if (fSavable != null && listener != null) {
 				listener.handleLifecycleEvent(new SaveablesLifecycleEvent(this,	SaveablesLifecycleEvent.POST_CLOSE,	getSaveables(), false));
 				fSavable.disconnectEditor();
 				fSavable= null;
@@ -5966,10 +5976,12 @@ public abstract class AbstractTextEditor extends EditorPart implements ITextEdit
 		markAsStateDependentAction(ITextEditorActionConstants.DELETE_LINE_TO_END, true);
 		markAsStateDependentAction(ITextEditorActionConstants.MOVE_LINE_UP, true);
 		markAsStateDependentAction(ITextEditorActionConstants.MOVE_LINE_DOWN, true);
+		markAsStateDependentAction(ITextEditorActionConstants.COPY_LINE_UP, true);
+		markAsStateDependentAction(ITextEditorActionConstants.COPY_LINE_DOWN, true);
 		markAsStateDependentAction(ITextEditorActionConstants.CUT_LINE, true);
 		markAsStateDependentAction(ITextEditorActionConstants.CUT_LINE_TO_BEGINNING, true);
 		markAsStateDependentAction(ITextEditorActionConstants.CUT_LINE_TO_END, true);
-
+		markAsStateDependentAction(ITextEditorActionConstants.JOIN_LINES, true);
 		setActionActivationCode(ITextEditorActionConstants.SHIFT_RIGHT_TAB,'\t', -1, SWT.NONE);
 		setActionActivationCode(ITextEditorActionConstants.SHIFT_LEFT, '\t', -1, SWT.SHIFT);
 	}
@@ -6330,9 +6342,10 @@ public abstract class AbstractTextEditor extends EditorPart implements ITextEdit
 	 */
 	protected void editorSaved() {
 		IEditorInput input= getEditorInput();
+		String id = getEditorSite().getId();
 		for (INavigationLocation location2 : getSite().getPage().getNavigationHistory().getLocations()) {
 			if (location2 instanceof TextSelectionNavigationLocation) {
-				if(input.equals(location2.getInput())) {
+				if (input.equals(location2.getInput()) && id.equals(location2.getId())) {
 					TextSelectionNavigationLocation location= (TextSelectionNavigationLocation) location2;
 					location.partSaved(this);
 				}
@@ -6971,7 +6984,8 @@ public abstract class AbstractTextEditor extends EditorPart implements ITextEdit
 				continue;
 
 			if (forward && p.offset == offset || !forward && p.offset + p.getLength() == offset + length) {// || p.includes(offset)) {
-				if (containingAnnotation == null || (forward && p.length >= containingAnnotationPosition.length || !forward && p.length >= containingAnnotationPosition.length)) {
+				if (containingAnnotationPosition == null || (forward && p.length >= containingAnnotationPosition.length
+						|| !forward && p.length >= containingAnnotationPosition.length)) {
 					containingAnnotation= a;
 					containingAnnotationPosition= p;
 					currentAnnotation= p.length == length;
@@ -7043,9 +7057,15 @@ public abstract class AbstractTextEditor extends EditorPart implements ITextEdit
 	@Override
 	public void saveState(IMemento memento) {
 		ISelection selection= doGetSelection();
-		if (selection instanceof ITextSelection) {
-			memento.putInteger(TAG_SELECTION_OFFSET, ((ITextSelection)selection).getOffset());
-			memento.putInteger(TAG_SELECTION_LENGTH, ((ITextSelection)selection).getLength());
+		if (selection instanceof IMultiTextSelection multiSelect && multiSelect.getRegions().length > 1) {
+			for (int i = 0; i < multiSelect.getRegions().length; i++) {
+				memento.putInteger(TAG_SELECTION_OFFSET + i, multiSelect.getRegions()[i].getOffset());
+				memento.putInteger(TAG_SELECTION_LENGTH + i, multiSelect.getRegions()[i].getLength());
+			}
+
+		} else if (selection instanceof ITextSelection singleSelect) {
+			memento.putInteger(TAG_SELECTION_OFFSET, singleSelect.getOffset());
+			memento.putInteger(TAG_SELECTION_LENGTH, singleSelect.getLength());
 		}
 		final StyledText textWidget= fSourceViewer.getTextWidget();
 		memento.putInteger(TAG_SELECTION_TOP_PIXEL, textWidget.getTopPixel());
@@ -7062,6 +7082,9 @@ public abstract class AbstractTextEditor extends EditorPart implements ITextEdit
 	 * @since 3.3
 	 */
 	protected boolean containsSavedState(IMemento memento) {
+		if (memento.getInteger(TAG_SELECTION_OFFSET + "0") != null) { //$NON-NLS-1$
+			return true;
+		}
 		return memento.getInteger(TAG_SELECTION_OFFSET) != null && memento.getInteger(TAG_SELECTION_LENGTH) != null;
 	}
 
@@ -7074,15 +7097,11 @@ public abstract class AbstractTextEditor extends EditorPart implements ITextEdit
 	 * @since 3.3
 	 */
 	protected void doRestoreState(IMemento memento) {
-		Integer offset= memento.getInteger(TAG_SELECTION_OFFSET);
-		if (offset == null)
+		ISelection savedSelection = readSelectionFromMemento(memento);
+		if (savedSelection == null) {
 			return;
-
-		Integer length= memento.getInteger(TAG_SELECTION_LENGTH);
-		if (length == null)
-			return;
-
-		doSetSelection(new TextSelection(offset.intValue(), length.intValue()));
+		}
+		doSetSelection(savedSelection);
 
 		final StyledText textWidget= fSourceViewer.getTextWidget();
 
@@ -7093,6 +7112,39 @@ public abstract class AbstractTextEditor extends EditorPart implements ITextEdit
 		Integer horizontalPixel= memento.getInteger(TAG_SELECTION_HORIZONTAL_PIXEL);
 		if (horizontalPixel != null)
 			textWidget.setHorizontalPixel(horizontalPixel.intValue());
+	}
+
+	private ISelection readSelectionFromMemento(IMemento memento) {
+		if (memento.getInteger(TAG_SELECTION_OFFSET + "0") != null) { //$NON-NLS-1$
+			LinkedList<IRegion> regions = new LinkedList<>();
+			int regionCounter = 0;
+			while (memento.getInteger(TAG_SELECTION_OFFSET + regionCounter) != null) {
+				Integer offset = memento.getInteger(TAG_SELECTION_OFFSET + regionCounter);
+				if (offset == null) {
+					continue;
+				}
+
+				Integer length = memento.getInteger(TAG_SELECTION_LENGTH + regionCounter);
+				if (length == null) {
+					continue;
+				}
+				regions.add(new Region(offset, length));
+				regionCounter++;
+			}
+			return new MultiTextSelection(getDocumentProvider().getDocument(getEditorInput()),
+					regions.toArray(new IRegion[0]));
+		} else {
+			Integer offset = memento.getInteger(TAG_SELECTION_OFFSET);
+			if (offset == null) {
+				return null;
+			}
+
+			Integer length = memento.getInteger(TAG_SELECTION_LENGTH);
+			if (length == null) {
+				return null;
+			}
+			return new TextSelection(offset, length);
+		}
 	}
 
 	@Override
