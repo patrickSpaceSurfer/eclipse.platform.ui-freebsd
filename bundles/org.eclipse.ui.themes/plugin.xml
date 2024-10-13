@@ -12,7 +12,7 @@
         basestylesheeturi="css/e4-dark_linux.css"
         id="org.eclipse.e4.ui.css.theme.e4_dark"
         label="%theme.dark"
-        os="linux">
+        os="freebsd">
     </theme>
     <theme
         basestylesheeturi="css/e4-dark_win.css"
@@ -37,7 +37,7 @@
             basestylesheeturi="css/e4_default_gtk.css"
             id="org.eclipse.e4.ui.css.theme.e4_default"
             label="%theme.gtk"
-            os="linux">
+            os="freebsd">
       </theme>
       <theme
             basestylesheeturi="css/e4_default_mac.css"
